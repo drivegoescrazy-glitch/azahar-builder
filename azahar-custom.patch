@@ -311,7 +311,7 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/fragments/GamesFra
              layoutManager = GridLayoutManager(
                  requireContext(),
 -                resources.getInteger(R.integer.game_grid_columns)
-+                resources.getInteger(R.integer.game_tile_columns)
++                resources.getInteger(R.integer.game_grid_columns)
              )
              adapter = this@GamesFragment.gameAdapter
          }
@@ -323,7 +323,7 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/fragments/SearchFr
              layoutManager = GridLayoutManager(
                  requireContext(),
 -                resources.getInteger(R.integer.game_grid_columns)
-+                resources.getInteger(R.integer.game_tile_columns)
++                resources.getInteger(R.integer.game_grid_columns)
              )
              adapter = this@SearchFragment.gameAdapter
          }
