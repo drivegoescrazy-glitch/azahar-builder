@@ -48,19 +48,28 @@ icon.write_text("""<?xml version="1.0" encoding="utf-8"?>
 # Turn the main library into a horizontal, swipeable card carousel.
 fragment = root / "java/org/citra/citra_emu/fragments/GamesFragment.kt"
 s = fragment.read_text()
-s = s.replace('import androidx.recyclerview.widget.GridLayoutManager', 'import androidx.recyclerview.widget.LinearLayoutManager')
-s = s.replace('''layoutManager = GridLayoutManager(
-                requireContext(),
-                resources.getInteger(R.integer.game_tile_columns)
-            )''', '''layoutManager = LinearLayoutManager(
+s = s.replace("import androidx.recyclerview.widget.GridLayoutManager", "import androidx.recyclerview.widget.LinearLayoutManager")
+pattern = re.compile(
+    r"layoutManager = GridLayoutManager\(\s*requireContext\(\),\s*resources\.getInteger\(R\.integer\.game_grid_columns\)\s*\)",
+    re.MULTILINE,
+)
+replacement = """layoutManager = LinearLayoutManager(
                 requireContext(),
                 androidx.recyclerview.widget.RecyclerView.HORIZONTAL,
                 false
-            )''')
+            )"""
+s, count = pattern.subn(replacement, s, count=1)
+if count != 1:
+    raise SystemExit("Could not safely locate the main games grid layout; refusing to build a partial UI change.")
 fragment.write_text(s)
 
-# Give carousel cards a consistent portrait-like width rather than stretching full-screen.
+# Give each horizontal carousel card a stable width. Keep the upstream 8dp spacing.
 layout = root / "res/layout/card_game.xml"
-s = layout.read_text().replace('android:layout_width="match_parent"\n    android:layout_height="wrap_content"\n    android:layout_margin="6dp"', 'android:layout_width="220dp"\n    android:layout_height="wrap_content"\n    android:layout_margin="8dp"', 1)
+s = layout.read_text()
+s = s.replace(
+    'android:layout_width="match_parent"\n    android:layout_height="wrap_content"\n    android:layout_margin="8dp"',
+    'android:layout_width="220dp"\n    android:layout_height="wrap_content"\n    android:layout_margin="8dp"',
+    1
+)
 layout.write_text(s)
 PY
