@@ -25,6 +25,10 @@ jobs:
       CCACHE_COMPILERCHECK: content
       CCACHE_BASEDIR: ${{ github.workspace }}/azahar
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-cache
+      CMAKE_BUILD_PARALLEL_LEVEL: 4
+      MAKEFLAGS: -j4
+      JAVA_TOOL_OPTIONS: -XX:ActiveProcessorCount=4
+
     steps:
       - name: Checkout Koji builder
         uses: actions/checkout@v4
@@ -53,9 +57,15 @@ jobs:
           path: |
             .gradle-cache/caches
             .gradle-cache/wrapper
-          key: koji-gradle-${{ runner.os }}-${{ hashFiles('azahar-custom.patch', 'koji-branding.sh', '.github/workflows/build.yml') }}
+          key: koji-gradle-${{ runner.os }}-${{ hashFiles('azahar-custom.patch', 'koji-branding.sh') }}
           restore-keys: |
             koji-gradle-${{ runner.os }}-
+
+      - name: Restore Android CMake package
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.ANDROID_SDK_ROOT }}/cmake/3.30.3
+          key: koji-cmake-${{ runner.os }}-3.30.3
 
       - name: Restore native compiler cache
         uses: actions/cache@v4
@@ -87,8 +97,12 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y ccache apksigner
-          echo "y" | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager "cmake;3.30.3"
+          sudo apt-get install -y --no-install-recommends ccache apksigner
+          if [ ! -x "${ANDROID_SDK_ROOT}/cmake/3.30.3/bin/cmake" ]; then
+            echo "Installing Android CMake 3.30.3"
+            echo "y" | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" "cmake;3.30.3"
+          fi
+          ccache --zero-stats
           ccache --show-stats
 
       - name: Build APK
