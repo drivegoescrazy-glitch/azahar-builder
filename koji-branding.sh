@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="src/android/app/src/main"
+ROOT="azahar/src/android/app/src/main"
 MANIFEST="$ROOT/AndroidManifest.xml"
 STRINGS="$ROOT/res/values/strings.xml"
 GAME_LAYOUT="$ROOT/res/layout/card_game.xml"
@@ -11,7 +11,7 @@ python3 - <<'PY'
 from pathlib import Path
 import re
 
-root = Path("src/android/app/src/main")
+root = Path("azahar/src/android/app/src/main")
 manifest = root / "AndroidManifest.xml"
 s = manifest.read_text()
 s = s.replace('android:icon="@mipmap/ic_launcher"', 'android:icon="@drawable/koji_icon"')
