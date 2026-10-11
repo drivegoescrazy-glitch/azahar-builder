@@ -37,7 +37,7 @@ jobs:
             TAG=$(gh api repos/azahar-emu/azahar/releases/latest --jq .tag_name)
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Building Azahar $TAG"
+          echo "Building Koji from Azahar $TAG"
 
       - name: Restore Gradle dependency and build caches
         uses: actions/cache@v4
@@ -45,7 +45,7 @@ jobs:
           path: |
             .gradle-cache/caches
             .gradle-cache/wrapper
-          key: koji-gradle-${{ runner.os }}-${{ hashFiles('azahar-custom.patch', '.github/workflows/build.yml') }}
+          key: koji-gradle-${{ runner.os }}-${{ hashFiles('azahar-custom.patch', 'koji-branding.sh', '.github/workflows/build.yml') }}
           restore-keys: |
             koji-gradle-${{ runner.os }}-
 
@@ -61,15 +61,20 @@ jobs:
       - name: Download Azahar source (with submodules)
         run: git clone --recursive --depth 1 --branch "${{ steps.ver.outputs.tag }}" https://github.com/azahar-emu/azahar azahar
 
-      - name: Apply patch
+      - name: Apply Koji emulator patch
         working-directory: azahar
         run: |
           patch -p1 --no-backup-if-mismatch < ../azahar-custom.patch
           if find . -name '*.rej' | grep -q .; then
-            echo "::error::Patch does not apply cleanly to ${{ steps.ver.outputs.tag }}. Re-run with a compatible tag or update the patch."
+            echo "::error::Patch does not apply cleanly to ${{ steps.ver.outputs.tag }}. Choose a compatible tag or update the patch."
             find . -name '*.rej'
             exit 1
           fi
+
+      - name: Apply Koji branding and carousel UI
+        run: |
+          chmod +x koji-branding.sh
+          ./koji-branding.sh
 
       - name: Install build tools
         run: |
