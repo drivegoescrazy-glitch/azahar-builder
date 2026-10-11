@@ -1,4 +1,4 @@
-name: Build patched Azahar APK
+name: Build Koji APK
 
 on:
   workflow_dispatch:
@@ -8,11 +8,23 @@ on:
         required: false
         default: ""
 
+permissions:
+  contents: read
+
+concurrency:
+  group: koji-apk-${{ github.ref }}-${{ inputs.tag }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_MAXSIZE: 3G
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-cache
     steps:
-      - name: Checkout this repo (contains azahar-custom.patch)
+      - name: Checkout Koji builder
         uses: actions/checkout@v4
 
       - name: Find Azahar version
@@ -20,12 +32,31 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${{ github.event.inputs.tag }}"
+          TAG="${{ inputs.tag }}"
           if [ -z "$TAG" ]; then
             TAG=$(gh api repos/azahar-emu/azahar/releases/latest --jq .tag_name)
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Building Azahar $TAG"
+
+      - name: Restore Gradle dependency and build caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            .gradle-cache/caches
+            .gradle-cache/wrapper
+          key: koji-gradle-${{ runner.os }}-${{ hashFiles('azahar-custom.patch', '.github/workflows/build.yml') }}
+          restore-keys: |
+            koji-gradle-${{ runner.os }}-
+
+      - name: Restore native compiler cache
+        uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: koji-ccache-${{ runner.os }}-${{ steps.ver.outputs.tag }}-${{ hashFiles('azahar-custom.patch') }}
+          restore-keys: |
+            koji-ccache-${{ runner.os }}-${{ steps.ver.outputs.tag }}-
+            koji-ccache-${{ runner.os }}-
 
       - name: Download Azahar source (with submodules)
         run: git clone --recursive --depth 1 --branch "${{ steps.ver.outputs.tag }}" https://github.com/azahar-emu/azahar azahar
@@ -35,29 +66,37 @@ jobs:
         run: |
           patch -p1 --no-backup-if-mismatch < ../azahar-custom.patch
           if find . -name '*.rej' | grep -q .; then
-            echo "::error::Patch does not apply cleanly to ${{ steps.ver.outputs.tag }}. Re-run with tag 2126.2 or ask for an updated patch."
+            echo "::error::Patch does not apply cleanly to ${{ steps.ver.outputs.tag }}. Re-run with a compatible tag or update the patch."
             find . -name '*.rej'
             exit 1
           fi
 
-      - name: Install tools
+      - name: Install build tools
         run: |
           sudo apt-get update -y
-          sudo apt-get install ccache apksigner -y
+          sudo apt-get install -y ccache apksigner
           echo "y" | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager "cmake;3.30.3"
+          ccache --show-stats
 
       - name: Build APK
         working-directory: azahar
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
+          NDK_CCACHE: /usr/bin/ccache
         run: |
-          export NDK_CCACHE=$(which ccache)
           cd src/android
           chmod +x ./gradlew
-          ./gradlew assembleVanillaRelease
+          ./gradlew --no-daemon --build-cache --parallel --max-workers=2 assembleVanillaRelease
+
+      - name: Show compiler cache statistics
+        if: always()
+        run: ccache --show-stats
 
       - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: azahar-patched-${{ steps.ver.outputs.tag }}
+          name: koji-${{ steps.ver.outputs.tag }}
           path: azahar/src/android/app/build/outputs/apk/vanilla/release/*.apk
+          if-no-files-found: error
+          retention-days: 14
