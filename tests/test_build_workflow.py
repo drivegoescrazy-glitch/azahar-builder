@@ -20,43 +20,98 @@ class BuildWorkflowTest(unittest.TestCase):
     def step(self, name):
         return next(step for step in self.steps if step.get('name') == name)
 
-    def test_signing_outputs_are_used_by_the_actual_build(self):
-        selector = self.step('Select APK signing mode')
+    def index(self, name):
+        return [step.get('name') for step in self.steps].index(name)
+
+    def test_every_build_is_signed_with_a_reused_or_provisioned_identity(self):
+        restore = self.step('Restore provisioned signing identity')
+        self.assertEqual(restore['uses'], 'actions/cache/restore@v4')
+        self.assertEqual(restore['with']['path'], '.signing')
+        self.assertEqual(restore['with']['key'], 'koji-provisioned-signing-v1')
+
+        selector = self.step('Select APK signing identity')
         self.assertEqual(selector['id'], 'signing')
+        for key in ('ANDROID_KEYSTORE_BASE64', 'ANDROID_KEYSTORE_PASS', 'ANDROID_KEY_ALIAS'):
+            self.assertEqual(selector['env'][key], f'${{{{ secrets.{key} }}}}')
+
+        provision = self.step('Provision signing identity')
+        self.assertEqual(provision['if'], "steps.signing.outputs.mode == 'generate'")
+        self.assertIn('tools/generate_signing_key.sh', provision['run'])
+
+        # A restored key must be in place before the identity is selected.
+        self.assertLess(self.index('Restore provisioned signing identity'),
+                        self.index('Select APK signing identity'))
+        self.assertLess(self.index('Select APK signing identity'),
+                        self.index('Provision signing identity'))
+
+        # The build consumes the selected identity instead of hardcoding one mode.
         build = self.step('Build APK')
-        self.assertEqual(build['env']['ANDROID_KEYSTORE_FILE'], '${{ steps.signing.outputs.keystore_file }}')
-        self.assertEqual(build['env']['KOJII_UNSIGNED_RELEASE'], "${{ steps.signing.outputs.mode == 'unsigned' }}")
-        self.assertEqual(self.step('Verify APK signer')['if'], "steps.signing.outputs.mode == 'signed'")
-        self.assertIn('steps.signing.outputs.mode', self.step('Upload APK')['with']['name'])
+        self.assertNotIn('KOJII_UNSIGNED_RELEASE', build.get('env', {}))
+        self.assertNotIn('ANDROID_KEYSTORE_FILE', build.get('env', {}))
+        self.assertIn('. "$KOJII_SIGNING_ENV"', build['run'])
+        self.assertIn('assembleVanillaRelease', build['run'])
+
+        # Every artifact is signed, so the signer check is unconditional.
+        self.assertNotIn('if', self.step('Verify APK signer'))
+        self.assertEqual(self.step('Verify package metadata and report signing identity')['env']['SIGNING_SOURCE'],
+                         '${{ steps.signing.outputs.mode }}')
+        self.assertEqual(self.step('Upload APK')['with']['name'], 'kojii-${{ steps.ver.outputs.tag }}')
+
+        # The provisioned key is persisted before the temporary material is removed.
+        for name in ('Save provisioned signing identity', 'Upload provisioned signing identity'):
+            self.assertEqual(self.step(name)['if'], "steps.signing.outputs.mode == 'generate'")
+        self.assertLess(self.index('Save provisioned signing identity'),
+                        self.index('Remove temporary signing material'))
+        self.assertLess(self.index('Upload provisioned signing identity'),
+                        self.index('Remove temporary signing material'))
+
+        self.assertNotIn('KOJII_UNSIGNED_RELEASE',
+                         '\n'.join(step.get('run', '') + json.dumps(step.get('env', {})) for step in self.steps))
+
         for step in self.steps:
             if 'run' in step:
                 script = re.sub(r'\$\{\{.*?\}\}', 'TEST', step['run'])
                 subprocess.run(['bash', '-n'], input=script, text=True, check=True)
 
-    def test_signed_and_unsigned_metadata_through_workflow_script(self):
-        script = self.step('Verify package metadata and report signing mode')['run']
+    def test_provisioning_artifact_can_be_promoted_to_secrets(self):
+        upload = self.step('Upload provisioned signing identity')
+        paths = upload['with']['path'].split()
+        for name in ('provisioned.p12', 'provisioned.pass', 'alias', 'keystore.b64',
+                     'PROMOTE-TO-SECRETS.txt'):
+            self.assertTrue(any(path.endswith(name) for path in paths), f'{name} must be uploaded')
+        self.assertLessEqual(int(upload['with']['retention-days']), 7)
+        generator = (ROOT/'tools/generate_signing_key.sh').read_text()
+        self.assertIn('ANDROID_KEYSTORE_BASE64', generator)
+        self.assertIn('PROMOTE-TO-SECRETS.txt', generator)
+
+    def test_metadata_script_requires_signed_output_from_a_known_identity(self):
+        script = self.step('Verify package metadata and report signing identity')['run']
         cases = [
-            ('signed', 'app-vanilla-release.apk', 'org.azahar_emu.azahar', True),
-            ('unsigned', 'app-vanilla-release-unsigned.apk', 'org.azahar_emu.azahar', True),
+            ('secrets', 'app-vanilla-release.apk', 'org.azahar_emu.azahar', True),
+            ('cached', 'app-vanilla-release.apk', 'org.azahar_emu.azahar', True),
+            ('generate', 'app-vanilla-release.apk', 'org.azahar_emu.azahar', True),
             ('unsigned', 'app-vanilla-release.apk', 'org.azahar_emu.azahar', False),
-            ('signed', 'app-vanilla-release.apk', 'wrong.package', False),
-            ('unknown', 'app-vanilla-release.apk', 'org.azahar_emu.azahar', False),
+            ('secrets', 'app-vanilla-release-unsigned.apk', 'org.azahar_emu.azahar', False),
+            ('secrets', 'app-vanilla-release.apk', 'wrong.package', False),
         ]
-        for mode, name, package, expected in cases:
-            with self.subTest(mode=mode, name=name, package=package), tempfile.TemporaryDirectory(dir=ROOT/'.work') as temporary:
+        for source, name, package, expected in cases:
+            with self.subTest(source=source, name=name, package=package), \
+                    tempfile.TemporaryDirectory(dir=ROOT/'.work') as temporary:
                 directory = Path(temporary)
                 metadata = directory/'azahar/src/android/app/build/outputs/apk/vanilla/release/output-metadata.json'
                 metadata.parent.mkdir(parents=True)
                 metadata.write_text(json.dumps({'applicationId': package, 'elements': [{'versionCode': 123, 'outputFile': name}]}))
                 summary = directory/'summary'
-                env = {**os.environ, 'SIGNING_MODE': mode, 'GITHUB_STEP_SUMMARY': str(summary)}
+                env = {**os.environ, 'SIGNING_SOURCE': source, 'GITHUB_STEP_SUMMARY': str(summary)}
                 result = subprocess.run(['bash', '-e', '-o', 'pipefail', '-c', script], cwd=directory,
                                         env=env, text=True, capture_output=True)
                 self.assertEqual(result.returncode == 0, expected, result.stderr)
                 if expected:
-                    self.assertIn(f'Kojii APK: {mode}', summary.read_text())
-                    if mode == 'unsigned':
-                        self.assertIn('Not installable yet', summary.read_text())
+                    self.assertIn(f'Kojii APK: signed ({source})', summary.read_text())
+                    if source == 'generate':
+                        self.assertIn('provisioned a new signing identity', summary.read_text())
+                    else:
+                        self.assertIn('updates an install', summary.read_text())
 
 
 if __name__ == '__main__':

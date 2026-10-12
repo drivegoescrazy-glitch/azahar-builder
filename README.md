@@ -73,30 +73,42 @@ Android requires the **same package ID and signing identity**. The package ID re
 `org.azahar_emu.azahar`, intentionally unchanged by the Kojii rename. The timestamp-based
 versionCode continues increasing; versionName now identifies Kojii explicitly.
 
-Old CI jobs fell back to a fresh runner-generated **debug key**, so APKs from different
-runs could not update each other. Release tasks now refuse that fallback. Configure these
-repository **Actions secrets** (never paste them into chat or commit a keystore):
+Every CI build is **signed**, because Android refuses to install an unsigned APK. The
+signing identity is chosen in this order (`tools/prepare_signing.sh`):
 
-- `ANDROID_KEYSTORE_BASE64`: base64 of the **original** installed APK's signing keystore
-- `ANDROID_KEYSTORE_PASS`: keystore/key password (the current project uses one password)
-- `ANDROID_KEY_ALIAS`: that key's alias
+1. **Repository secrets** - the durable, operator-controlled identity. Configure:
+   - `ANDROID_KEYSTORE_BASE64`: base64 of the keystore (never commit it, never paste it in chat)
+   - `ANDROID_KEYSTORE_PASS`: keystore/key password used by this project for both store and key
+   - `ANDROID_KEY_ALIAS`: that key's alias
+   CI decodes the key into `$RUNNER_TEMP/kojii-release.p12`, validates alias and password
+   before compilation, and removes it afterward.
+2. **Provisioned CI key** - when no secrets are set, the first such run creates one
+   (`tools/generate_signing_key.sh`, RSA-4096, passphrase masked in logs) and caches it as
+   `.signing/` under the Actions cache key `koji-provisioned-signing-v1`. Later runs on the
+   same branch reuse that exact identity, so an installed APK keeps updating in place.
+3. **Provision a new identity** - only when no key exists at all. That run also uploads a
+   `kojii-signing-key` artifact (private-key material plus `PROMOTE-TO-SECRETS.txt`) so the
+   identity can be promoted to secrets; the artifact needs repository read access to download.
 
-Keep encrypted offline backups. CI decodes into `$RUNNER_TEMP/kojii-release.jks`, validates
-it before compilation, and removes it afterward. The artifact includes the public signer
-fingerprint; compare it with `apksigner verify --print-certs previous.apk` before updating.
+`tools/generate_signing_key.sh` refuses to overwrite a live key, and `prepare_signing.sh`
+only clears a key it has *proved* unusable - so the identity never rotates silently. Partial
+credentials, an invalid keystore, a wrong alias or a bad password all fail the run instead of
+falling back to a new key. The signer certificate SHA-256 is printed in the run summary;
+compare it with `apksigner verify --print-certs previous.apk` before updating.
 
-**If the original private key is lost, code cannot make Android accept an in-place update.**
-A newly created key only establishes a stable identity for future builds after migration.
-Back up and verify user-folder saves/config/installed data before any reinstall; do not
-uninstall merely because an update fails.
+**Requirements for in-place updates:** the same package ID (`org.azahar_emu.azahar`,
+intentionally unchanged by the Kojii rename) and the same signing key. The timestamp-based
+`versionCode` keeps increasing, so updates are never version downgrades.
 
-With **none** of the three signing secrets configured, CI builds a clearly labeled
-`kojii-<version>-unsigned` artifact rather than failing before compilation. This APK is
-**not installable or update-ready** until signed with the original key. Gradle requires
-explicit `KOJII_UNSIGNED_RELEASE=true` for this mode; it never uses a fresh debug key.
-With all three secrets configured, CI builds `kojii-<version>-signed` and verifies its signer.
-Partial credentials, an invalid keystore, a wrong alias, or a bad password still fail:
-those are configuration errors, not a reason to silently produce unsigned output.
+**If the installed app was signed with an older, unrecoverable key** (the pre-Kojii builds
+used a runner-generated debug key), Android cannot accept an update even with a correctly
+signed APK. Back up and verify user-folder saves/config/installed data, then uninstall the
+old app once and install the new signed build. Do not uninstall merely because an update
+fails while the signer still matches.
+
+**Durability caveat:** the provisioned key lives in the Actions cache, which is scoped to the
+branch that created it and is evicted after about a week without use. Promote it to the three
+secrets above to make the identity permanent.
 
 ## 60 FPS is not turbo
 

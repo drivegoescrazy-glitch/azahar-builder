@@ -4,3 +4,4 @@ __pycache__/
 *.keystore
 *.p12
 *.env
+.signing/

@@ -41,6 +41,10 @@ jobs:
       KOJI_ABIS: ${{ inputs.abis }}
       # Keep Gradle's JVM heap large enough to avoid memory pressure during Kotlin/native builds.
       GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g\ -XX:MaxMetaspaceSize=1g\ -Dfile.encoding=UTF-8
+      # Release signing material lives outside the repository: the provisioned key is cached as
+      # .signing (ignored by git) and the private env file in a temporary runner directory.
+      KOJII_SIGNING_DIR: ${{ github.workspace }}/.signing
+      KOJII_SIGNING_ENV: ${{ runner.temp }}/signing.env
 
     steps:
       - name: Checkout Kojii builder
@@ -64,14 +68,54 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Select APK signing mode
+      # The provisioned key is fetched before the identity is selected so that a key created by
+      # an earlier run is reused instead of replaced.
+      - name: Restore provisioned signing identity
+        uses: actions/cache/restore@v4
+        with:
+          path: .signing
+          key: koji-provisioned-signing-v1
+
+      - name: Select APK signing identity
         id: signing
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/kojii-release.jks
+          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/kojii-release.p12
         run: bash tools/prepare_signing.sh
+
+      - name: Provision signing identity
+        if: steps.signing.outputs.mode == 'generate'
+        run: bash tools/generate_signing_key.sh
+
+      # Persist the new identity before the long native build: a later run restores it and signs
+      # with exactly the same key. continue-on-error keeps a cache hiccup from discarding a
+      # finished APK, but a warning here means the next run would provision a different identity,
+      # so promote the uploaded key to repository secrets instead.
+      - name: Save provisioned signing identity
+        if: steps.signing.outputs.mode == 'generate'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: .signing
+          key: koji-provisioned-signing-v1
+
+      # Read access to the repository is required to download this artifact, so the key is not
+      # published; it exists so the identity can be promoted to repository secrets.
+      - name: Upload provisioned signing identity
+        if: steps.signing.outputs.mode == 'generate'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kojii-signing-key
+          path: |
+            .signing/provisioned.p12
+            .signing/provisioned.pass
+            .signing/alias
+            .signing/keystore.b64
+            .signing/PROMOTE-TO-SECRETS.txt
+          retention-days: 7
+          if-no-files-found: error
 
       # Cache keys are content-addressed (tag + patch/branding hash) instead of per-run.
       # A unique key per run would write a fresh multi-gigabyte entry on every build and
@@ -163,11 +207,12 @@ jobs:
         working-directory: azahar
         env:
           NDK_CCACHE: /usr/bin/ccache
-          ANDROID_KEYSTORE_FILE: ${{ steps.signing.outputs.keystore_file }}
-          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KOJII_UNSIGNED_RELEASE: ${{ steps.signing.outputs.mode == 'unsigned' }}
         run: |
+          set -euo pipefail
+          set -a
+          # shellcheck disable=SC1090
+          . "$KOJII_SIGNING_ENV"
+          set +a
           cd src/android
           chmod +x ./gradlew
           set -o pipefail
@@ -207,18 +252,24 @@ jobs:
             echo "ccache was not installed; no compiler-cache statistics available."
           fi
 
+      # Every build is signed, so this always runs: an unsigned APK cannot be installed at all.
       - name: Verify APK signer
-        if: steps.signing.outputs.mode == 'signed'
         run: |
           set -euo pipefail
           APK_DIR="azahar/src/android/app/build/outputs/apk/vanilla/release"
-          for apk in "$APK_DIR"/*.apk; do
+          shopt -s nullglob
+          apks=("$APK_DIR"/*.apk)
+          if [ "${#apks[@]}" -eq 0 ]; then
+            echo "::error title=No APK produced::No release APK was found in $APK_DIR"
+            exit 1
+          fi
+          for apk in "${apks[@]}"; do
             apksigner verify --verbose --print-certs "$apk" | tee "${apk%.apk}-signer.txt"
           done
 
-      - name: Verify package metadata and report signing mode
+      - name: Verify package metadata and report signing identity
         env:
-          SIGNING_MODE: ${{ steps.signing.outputs.mode }}
+          SIGNING_SOURCE: ${{ steps.signing.outputs.mode }}
         run: |
           python3 - <<'PYMETA'
           import json
@@ -227,29 +278,30 @@ jobs:
           metadata = json.loads(Path("azahar/src/android/app/build/outputs/apk/vanilla/release/output-metadata.json").read_text())
           assert metadata["applicationId"] == "org.azahar_emu.azahar", "Package identity changed; updates would break"
           assert all(e["versionCode"] > 0 for e in metadata["elements"])
-          mode = os.environ["SIGNING_MODE"]
-          assert mode in ("signed", "unsigned")
-          if mode == "unsigned":
-              for element in metadata["elements"]:
-                  assert element["outputFile"].endswith("-unsigned.apk"), "Unexpected unsigned output name"
+          source = os.environ["SIGNING_SOURCE"]
+          assert source in ("secrets", "cached", "generate"), f"Unexpected signing source {source!r}"
+          for element in metadata["elements"]:
+              assert not element["outputFile"].endswith("-unsigned.apk"), "Unsigned APKs are not installable; the build must always be signed"
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
-              summary.write(f"### Kojii APK: {mode}\n")
-              if mode == "unsigned":
-                  summary.write("Not installable yet. Sign with the original app key before installation or updating.\n")
+              summary.write(f"### Kojii APK: signed ({source})\n")
+              if source == "secrets":
+                  summary.write("Signed with the signing identity from repository secrets. It updates an install signed with the same key.\n")
+              elif source == "cached":
+                  summary.write("Signed with the provisioned CI identity reused from the Actions cache, so it updates an install of the previous run.\n")
               else:
-                  summary.write("Signed with the configured persistent key. Compare the signer with the installed version before updating.\n")
-          print("Package identity, version codes and signing mode verified")
+                  summary.write("This run provisioned a new signing identity. The APK installs as a fresh app; promote the `kojii-signing-key` artifact to repository secrets so later builds update it instead of replacing it.\n")
+          print(f"Package identity, version codes and signed output verified ({source})")
           PYMETA
 
-      - name: Remove temporary signing key
+      - name: Remove temporary signing material
         if: always()
-        run: rm -f "$RUNNER_TEMP/kojii-release.jks"
+        run: rm -f "$RUNNER_TEMP/kojii-release.p12" "$RUNNER_TEMP/signing.env"
 
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: kojii-${{ steps.ver.outputs.tag }}-${{ steps.signing.outputs.mode }}
+          name: kojii-${{ steps.ver.outputs.tag }}
           path: |
             azahar/src/android/app/build/outputs/apk/vanilla/release/*.apk
             azahar/src/android/app/build/outputs/apk/vanilla/release/*-signer.txt
