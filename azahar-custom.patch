@@ -1,6 +1,6 @@
 diff -ruN a/CMakeModules/GenerateSettingKeys.cmake b/CMakeModules/GenerateSettingKeys.cmake
---- a/CMakeModules/GenerateSettingKeys.cmake	2026-10-11 20:10:46.983400326 +0000
-+++ b/CMakeModules/GenerateSettingKeys.cmake	2026-10-11 20:10:48.380464452 +0000
+--- a/CMakeModules/GenerateSettingKeys.cmake	2026-10-12 01:32:52.013885663 +0000
++++ b/CMakeModules/GenerateSettingKeys.cmake	2026-10-12 03:31:44.059061798 +0000
 @@ -48,6 +48,7 @@
      "resolution_factor"
      "frame_limit"
@@ -11,7 +11,7 @@ diff -ruN a/CMakeModules/GenerateSettingKeys.cmake b/CMakeModules/GenerateSettin
      "delay_game_render_thread_us"
 diff -ruN a/src/android/app/build.gradle.kts b/src/android/app/build.gradle.kts
 --- a/src/android/app/build.gradle.kts	2026-10-12 01:32:52.149885663 +0000
-+++ b/src/android/app/build.gradle.kts	2026-10-12 01:43:37.326595000 +0000
++++ b/src/android/app/build.gradle.kts	2026-10-12 03:31:44.059061798 +0000
 @@ -21,7 +21,15 @@
   * next 680 years.
   */
@@ -29,10 +29,9 @@ diff -ruN a/src/android/app/build.gradle.kts b/src/android/app/build.gradle.kts
  
  val downloadedJniLibsPath = "${layout.buildDirectory.get().asFile.path}/downloadedJniLibs"
  
-
 diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/adapters/GameAdapter.kt b/src/android/app/src/main/java/org/citra/citra_emu/adapters/GameAdapter.kt
---- a/src/android/app/src/main/java/org/citra/citra_emu/adapters/GameAdapter.kt	2026-10-11 20:10:47.791067820 +0000
-+++ b/src/android/app/src/main/java/org/citra/citra_emu/adapters/GameAdapter.kt	2026-10-11 20:10:49.154962183 +0000
+--- a/src/android/app/src/main/java/org/citra/citra_emu/adapters/GameAdapter.kt	2026-10-12 01:32:52.149885663 +0000
++++ b/src/android/app/src/main/java/org/citra/citra_emu/adapters/GameAdapter.kt	2026-10-12 03:31:44.063061798 +0000
 @@ -15,7 +15,6 @@
  import android.graphics.drawable.Icon
  import android.net.Uri
@@ -59,7 +58,7 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/adapters/GameAdapt
  import org.citra.citra_emu.fragments.IndeterminateProgressDialogFragment
  import org.citra.citra_emu.model.Game
  import org.citra.citra_emu.utils.BuildUtil
-@@ -200,51 +199,17 @@
+@@ -200,51 +201,17 @@
              binding.imageGameScreen.scaleType = ImageView.ScaleType.CENTER_CROP
              GameIconUtils.loadGameIcon(activity, game, binding.imageGameScreen)
  
@@ -111,7 +110,7 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/adapters/GameAdapt
          }
      }
  
-@@ -557,6 +522,14 @@
+@@ -557,6 +524,14 @@
                  )
              }
  
@@ -127,8 +126,8 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/adapters/GameAdapt
              val preferences = PreferenceManager.getDefaultSharedPreferences(context)
  
 diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/SettingKeys.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/SettingKeys.kt
---- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/SettingKeys.kt	2026-10-11 20:10:47.795696289 +0000
-+++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/SettingKeys.kt	2026-10-11 20:10:49.161659054 +0000
+--- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/SettingKeys.kt	2026-10-12 01:32:52.153885663 +0000
++++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/SettingKeys.kt	2026-10-12 03:31:44.063061798 +0000
 @@ -44,6 +44,7 @@
      external fun resolution_factor(): String
      external fun frame_limit(): String
@@ -137,10 +136,61 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
      external fun texture_filter(): String
      external fun texture_sampling(): String
      external fun delay_game_render_thread_us(): String
+diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/BooleanSetting.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/BooleanSetting.kt
+--- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/BooleanSetting.kt	2026-10-12 01:32:52.153885663 +0000
++++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/BooleanSetting.kt	2026-10-12 03:31:56.442384216 +0000
+@@ -13,7 +13,7 @@
+ ) : AbstractBooleanSetting {
+     EXPAND_TO_CUTOUT_AREA(SettingKeys.expand_to_cutout_area(), Settings.SECTION_LAYOUT, false),
+     SPIRV_SHADER_GEN(SettingKeys.spirv_shader_gen(), Settings.SECTION_RENDERER, true),
+-    ASYNC_SHADERS(SettingKeys.async_shader_compilation(), Settings.SECTION_RENDERER, false),
++    ASYNC_SHADERS(SettingKeys.async_shader_compilation(), Settings.SECTION_RENDERER, true),
+     DISABLE_SPIRV_OPTIMIZER(SettingKeys.disable_spirv_optimizer(), Settings.SECTION_RENDERER, true),
+     PLUGIN_LOADER(SettingKeys.plugin_loader(), Settings.SECTION_SYSTEM, false),
+     ALLOW_PLUGIN_LOADER(SettingKeys.allow_plugin_loader(), Settings.SECTION_SYSTEM, true),
+@@ -102,6 +102,9 @@
+         Settings.SECTION_RENDERER,
+         false
+     ),
++    // Per-game 60 FPS patch toggle. Kept in the model so the per-game settings screen preserves
++    // it instead of dropping it while saving.
++    PATCH_60FPS(SettingKeys.use_60fps_patch(), Settings.SECTION_RENDERER, false),
+     USE_FRAME_LIMIT(SettingKeys.use_frame_limit(), Settings.SECTION_RENDERER, true),
+     DEBUG_RENDERER(SettingKeys.renderer_debug(), Settings.SECTION_DEBUG, false),
+     DISABLE_RIGHT_EYE_RENDER(
+@@ -163,6 +166,7 @@
+             CPU_JIT,
+             ASYNC_CUSTOM_LOADING,
+             SHADERS_ACCURATE_MUL,
++            PATCH_60FPS,
+             USE_ARTIC_BASE_CONTROLLER,
+             COMPRESS_INSTALLED_CIA_CONTENT,
+             ASYNC_FS_OPERATIONS,
+diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt
+--- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt	2026-10-12 01:32:52.153885663 +0000
++++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt	2026-10-12 03:31:56.442384216 +0000
+@@ -88,11 +88,16 @@
+                 SettingsFile.saveFile(fileName, iniSections, view)
+             }
+         } else {
+-            // TODO: Implement per game settings
++            SettingsFile.saveCustomGameSettings(gameId!!, sections, view)
+         }
+     }
+ 
+     fun saveSetting(setting: AbstractSetting, filename: String) {
++        if (!TextUtils.isEmpty(gameId) && filename == SettingsFile.FILE_NAME_CONFIG) {
++            // Editing the settings of a specific game must never leak into the global config.
++            SettingsFile.saveCustomGameSetting(gameId!!, setting)
++            return
++        }
+         SettingsFile.saveFile(filename, setting)
+     }
+ 
 diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/PerGameSettingsDialog.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/PerGameSettingsDialog.kt
 --- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/PerGameSettingsDialog.kt	1970-01-01 00:00:00.000000000 +0000
-+++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/PerGameSettingsDialog.kt	2026-10-11 20:10:49.168563013 +0000
-@@ -0,0 +1,40 @@
++++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/PerGameSettingsDialog.kt	2026-10-12 03:43:09.076994875 +0000
+@@ -0,0 +1,162 @@
 +// Licensed under GPLv2 or any later version
 +// Refer to the license.txt file included.
 +
@@ -148,29 +198,144 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 +
 +import android.content.Context
 +import android.view.LayoutInflater
++import android.widget.ArrayAdapter
 +import android.widget.TextView
 +import android.widget.Toast
 +import com.google.android.material.dialog.MaterialAlertDialogBuilder
 +import com.google.android.material.materialswitch.MaterialSwitch
 +import com.google.android.material.slider.Slider
-+import android.view.View
++import com.google.android.material.textfield.MaterialAutoCompleteTextView
 +import org.citra.citra_emu.R
 +import org.citra.citra_emu.features.settings.utils.PerGameSettings
 +import org.citra.citra_emu.model.Game
 +
++/**
++ * The Koji menu: per-game performance and visual options, written to this title's own override
++ * file. Nothing here touches config.ini, and options left at their default keep inheriting the
++ * global settings instead of being pinned.
++ */
 +object PerGameSettingsDialog {
++    private const val MIN_CPU_CLOCK = 25
++    private const val MAX_CPU_CLOCK = 200
++    private const val MIN_RESOLUTION = 1
++    private const val MAX_RESOLUTION = 4
++    private const val MAX_SPEED_LIMIT = 200
++
++    /**
++     * Returns the value to persist: a value the user actually changed becomes an override, while a
++     * value left at its default stays "inherit" unless the game already overrode it.
++     */
++    private fun <T> asOverride(initial: T?, fallback: T, chosen: T): T? =
++        if (chosen != fallback) chosen else initial
++
 +    fun show(context: Context, game: Game) {
 +        val view = LayoutInflater.from(context).inflate(R.layout.dialog_per_game_settings, null)
-+        val values = PerGameSettings.load(game.titleId)
++        val initial = PerGameSettings.load(game.titleId)
 +
++        val boost = view.findViewById<MaterialSwitch>(R.id.pg_boost)
 +        val patch = view.findViewById<MaterialSwitch>(R.id.pg_60fps)
-+        patch.isChecked = values.patch60fps
++        val cpuClock = view.findViewById<Slider>(R.id.pg_cpu_clock)
++        val cpuClockLabel = view.findViewById<TextView>(R.id.pg_cpu_clock_label)
++        val speedLimit = view.findViewById<Slider>(R.id.pg_speed_limit)
++        val speedLimitLabel = view.findViewById<TextView>(R.id.pg_speed_limit_label)
++        val resolution = view.findViewById<Slider>(R.id.pg_resolution)
++        val resolutionLabel = view.findViewById<TextView>(R.id.pg_resolution_label)
++        val textureFilter = view.findViewById<MaterialAutoCompleteTextView>(R.id.pg_texture_filter)
++        val linearFilter = view.findViewById<MaterialSwitch>(R.id.pg_linear_filter)
++        val sampling = view.findViewById<MaterialAutoCompleteTextView>(R.id.pg_sampling)
++
++        boost.isChecked = initial.boost
++        patch.isChecked = initial.patch60fps ?: false
++
++        val cpuClockValue = (initial.cpuClockPercent
++            ?: PerGameSettings.Options.DEFAULT_CPU_CLOCK)
++            .coerceIn(MIN_CPU_CLOCK, MAX_CPU_CLOCK)
++        cpuClock.value = cpuClockValue.toFloat()
++        cpuClockLabel.text = context.getString(R.string.pg_cpu_label, cpuClockValue)
++        cpuClock.addOnChangeListener { _, value, _ ->
++            cpuClockLabel.text = context.getString(R.string.pg_cpu_label, value.toInt())
++        }
++
++        val speedLimitValue = (initial.speedLimitPercent
++            ?: PerGameSettings.Options.DEFAULT_SPEED_LIMIT)
++            .coerceIn(0, MAX_SPEED_LIMIT)
++        speedLimit.value = speedLimitValue.toFloat()
++        speedLimitLabel.text = speedLimitText(context, speedLimitValue)
++        speedLimit.addOnChangeListener { _, value, _ ->
++            speedLimitLabel.text = speedLimitText(context, value.toInt())
++        }
++
++        val resolutionValue = (initial.resolutionFactor
++            ?: PerGameSettings.Options.DEFAULT_RESOLUTION)
++            .coerceIn(MIN_RESOLUTION, MAX_RESOLUTION)
++        resolution.value = resolutionValue.toFloat()
++        resolutionLabel.text = context.getString(R.string.pg_res_label, resolutionValue)
++        resolution.addOnChangeListener { _, value, _ ->
++            resolutionLabel.text = context.getString(R.string.pg_res_label, value.toInt())
++        }
++
++        val filterNames = context.resources.getStringArray(R.array.pg_texture_filter_names)
++        textureFilter.setAdapter(
++            ArrayAdapter(context, R.layout.support_simple_spinner_dropdown_item, filterNames)
++        )
++        val filterIndex = (initial.textureFilter
++            ?: PerGameSettings.Options.DEFAULT_TEXTURE_FILTER).coerceIn(0, filterNames.size - 1)
++        textureFilter.setText(filterNames[filterIndex], false)
++
++        linearFilter.isChecked = initial.linearFilter
++            ?: PerGameSettings.Options.DEFAULT_LINEAR_FILTER
++
++        val samplingNames = context.resources.getStringArray(R.array.pg_sampling_names)
++        sampling.setAdapter(
++            ArrayAdapter(context, R.layout.support_simple_spinner_dropdown_item, samplingNames)
++        )
++        val samplingIndex = (initial.textureSampling
++            ?: PerGameSettings.Options.DEFAULT_TEXTURE_SAMPLING).coerceIn(0, samplingNames.size - 1)
++        sampling.setText(samplingNames[samplingIndex], false)
 +
 +        MaterialAlertDialogBuilder(context)
-+            .setTitle(context.getString(R.string.koji_menu_title) + ": " + game.title)
++            .setTitle(
++                context.getString(R.string.koji_menu_title) + ": " + game.title
++            )
 +            .setView(view)
 +            .setPositiveButton(R.string.pg_save) { _, _ ->
-+                val saved = PerGameSettings.save60fps(game.titleId, patch.isChecked)
++                val options = PerGameSettings.Options(
++                    patch60fps = asOverride(
++                        initial.patch60fps, false, patch.isChecked
++                    ),
++                    boost = boost.isChecked,
++                    resolutionFactor = asOverride(
++                        initial.resolutionFactor,
++                        PerGameSettings.Options.DEFAULT_RESOLUTION,
++                        resolution.value.toInt()
++                    ),
++                    textureFilter = asOverride(
++                        initial.textureFilter,
++                        PerGameSettings.Options.DEFAULT_TEXTURE_FILTER,
++                        filterNames.indexOf(textureFilter.text.toString()).coerceAtLeast(0)
++                    ),
++                    linearFilter = asOverride(
++                        initial.linearFilter,
++                        PerGameSettings.Options.DEFAULT_LINEAR_FILTER,
++                        linearFilter.isChecked
++                    ),
++                    textureSampling = asOverride(
++                        initial.textureSampling,
++                        PerGameSettings.Options.DEFAULT_TEXTURE_SAMPLING,
++                        samplingNames.indexOf(sampling.text.toString()).coerceAtLeast(0)
++                    ),
++                    cpuClockPercent = asOverride(
++                        initial.cpuClockPercent,
++                        PerGameSettings.Options.DEFAULT_CPU_CLOCK,
++                        cpuClock.value.toInt()
++                    ),
++                    speedLimitPercent = asOverride(
++                        initial.speedLimitPercent,
++                        PerGameSettings.Options.DEFAULT_SPEED_LIMIT,
++                        speedLimit.value.toInt()
++                    )
++                )
++                val saved = PerGameSettings.save(game.titleId, options)
 +                Toast.makeText(
 +                    context,
 +                    if (saved) R.string.pg_saved else R.string.pg_save_failed,
@@ -180,11 +345,30 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 +            .setNegativeButton(android.R.string.cancel, null)
 +            .show()
 +    }
++
++    private fun speedLimitText(context: Context, percent: Int): String =
++        if (percent == 0) {
++            context.getString(R.string.pg_limit_unlimited)
++        } else {
++            context.getString(R.string.pg_limit_label, "$percent%")
++        }
 +}
+diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/SettingsFragmentPresenter.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/SettingsFragmentPresenter.kt
+--- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/SettingsFragmentPresenter.kt	2026-10-12 01:32:52.157885663 +0000
++++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/SettingsFragmentPresenter.kt	2026-10-12 03:31:44.071061798 +0000
+@@ -88,7 +88,7 @@
+ 
+     fun loadSettingsList() {
+         if (!TextUtils.isEmpty(gameId)) {
+-            settingsActivity.setToolbarTitle("Application Settings: $gameId")
++            settingsActivity.setToolbarTitle("Game Settings: $gameId")
+         }
+         val sl = ArrayList<SettingsItem>()
+         if (menuTag == null) {
 diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/PerGameSettings.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/PerGameSettings.kt
 --- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/PerGameSettings.kt	1970-01-01 00:00:00.000000000 +0000
-+++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/PerGameSettings.kt	2026-10-11 20:10:49.168907744 +0000
-@@ -0,0 +1,130 @@
++++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/PerGameSettings.kt	2026-10-12 03:36:21.828795587 +0000
+@@ -0,0 +1,188 @@
 +// Licensed under GPLv2 or any later version
 +// Refer to the license.txt file included.
 +
@@ -202,16 +386,43 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 + * Per-game overrides, stored as <user dir>/config/custom/<TITLEID>.ini. The native side layers
 + * this file over config.ini when the game boots (see Config::SourceFor in jni/config.cpp), so any
 + * key present here wins and everything else falls back to the global settings.
++ *
++ * A null field in [Options] means "not overridden by this game". Writing then removes the key so
++ * the game keeps inheriting the global value, which is why opening the Koji menu and pressing Save
++ * can never pin a value the user did not actually change.
 + */
 +object PerGameSettings {
-+    data class Values(
-+        var enabled: Boolean = false,
-+        var boost: Boolean = false,
-+        var patch60fps: Boolean = false,
-+        var speedLimitPercent: Int = 100, // 0 = unlimited
-+        var resolutionFactor: Int = 1,
-+        var cpuClockPercent: Int = 100
++    /** Keys owned by the "Performance boost" preset; all are removed again when it is turned off. */
++    private val BOOST_KEYS = listOf(
++        "Renderer" to "use_vsync",
++        "Renderer" to "async_shader_compilation",
++        "Renderer" to "async_presentation",
++        "Renderer" to "use_hw_shader",
++        "Renderer" to "use_disk_shader_cache",
++        "Renderer" to "use_skip_duplicate_frames",
++        "Core" to "use_cpu_jit"
 +    )
++
++    /** The Koji menu options for a single game. */
++    data class Options(
++        var patch60fps: Boolean? = null,
++        var boost: Boolean = false,
++        var resolutionFactor: Int? = null,
++        var textureFilter: Int? = null,
++        var linearFilter: Boolean? = null,
++        var textureSampling: Int? = null,
++        var cpuClockPercent: Int? = null,
++        var speedLimitPercent: Int? = null
++    ) {
++        companion object {
++            const val DEFAULT_RESOLUTION = 1
++            const val DEFAULT_TEXTURE_FILTER = 0
++            const val DEFAULT_LINEAR_FILTER = true
++            const val DEFAULT_TEXTURE_SAMPLING = 0
++            const val DEFAULT_CPU_CLOCK = 100
++            const val DEFAULT_SPEED_LIMIT = 100
++        }
++    }
 +
 +    private const val DIR = "custom"
 +
@@ -225,34 +436,101 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 +    private fun customFile(titleId: Long): DocumentFile? =
 +        configDir()?.findFile(DIR)?.findFile(fileName(titleId))
 +
-+    fun load(titleId: Long): Values {
-+        val values = Values()
++    private fun put(ini: Wini, section: String, key: String, value: Any?) {
++        if (value == null) {
++            ini.remove(section, key)
++        } else {
++            ini.put(section, key, value.toString())
++        }
++    }
++
++    private fun asInt(value: String?): Int? = value?.trim()?.toIntOrNull()
++
++    fun load(titleId: Long): Options {
++        val options = Options()
 +        try {
-+            val file = customFile(titleId) ?: return values
++            val file = customFile(titleId)
++            if (file == null || file.length() <= 0L) {
++                return options
++            }
 +            val stream = CitraApplication.appContext.contentResolver.openInputStream(file.uri)
-+                ?: return values
++                ?: return options
 +            stream.use {
 +                val ini = Wini(it)
-+                values.enabled = true
-+                values.boost = ini.get("Renderer", "async_shader_compilation") == "1" &&
-+                    ini.get("Renderer", "use_vsync") == "0"
-+                values.patch60fps = ini.get("Renderer", "use_60fps_patch") == "1"
-+                val useLimit = ini.get("Renderer", "use_frame_limit")
-+                values.speedLimitPercent = if (useLimit == "0") {
++                val vsync = ini.get("Renderer", "use_vsync")
++                val asyncShaders = ini.get("Renderer", "async_shader_compilation")
++                options.boost = vsync == "0" && asyncShaders == "1"
++                options.patch60fps = ini.get("Renderer", "use_60fps_patch")?.let { it == "1" }
++                options.resolutionFactor = asInt(ini.get("Renderer", "resolution_factor"))
++                options.textureFilter = asInt(ini.get("Renderer", "texture_filter"))
++                options.linearFilter = ini.get("Renderer", "filter_mode")?.let { it != "0" }
++                options.textureSampling = asInt(ini.get("Renderer", "texture_sampling"))
++                options.cpuClockPercent = asInt(ini.get("Core", "cpu_clock_percentage"))
++                options.speedLimitPercent = if (ini.get("Renderer", "use_frame_limit") == "0") {
 +                    0
 +                } else {
-+                    ini.get("Renderer", "frame_limit")?.toIntOrNull() ?: 100
++                    asInt(ini.get("Renderer", "frame_limit"))
 +                }
-+                values.resolutionFactor = ini.get("Renderer", "resolution_factor")?.toIntOrNull() ?: 1
-+                values.cpuClockPercent = ini.get("Core", "cpu_clock_percentage")?.toIntOrNull() ?: 100
 +            }
 +        } catch (e: Exception) {
 +            Log.error("[PerGameSettings] load failed: ${e.message}")
 +        }
-+        return values
++        return options
 +    }
 +
-+    /** Updates only the Koji 60 FPS flag, preserving all other per-game settings. */
++    /** Applies [options] to this game's override file, preserving every other key in it. */
++    fun save(titleId: Long, options: Options): Boolean {
++        try {
++            val cfg = configDir() ?: return false
++            val dir = cfg.findFile(DIR) ?: cfg.createDirectory(DIR) ?: return false
++            var file = dir.findFile(fileName(titleId))
++            if (file == null) {
++                file = FileUtil.createFile(dir.uri.toString(), fileName(titleId)) ?: return false
++            }
++
++            val ini = if (file.length() > 0L) {
++                val input = CitraApplication.appContext.contentResolver.openInputStream(file.uri)
++                    ?: return false
++                input.use { Wini(it) }
++            } else {
++                Wini()
++            }
++
++            put(ini, "Renderer", "use_60fps_patch",
++                options.patch60fps?.let { if (it) 1 else 0 })
++            put(ini, "Renderer", "resolution_factor", options.resolutionFactor)
++            put(ini, "Renderer", "texture_filter", options.textureFilter)
++            put(ini, "Renderer", "filter_mode",
++                options.linearFilter?.let { if (it) 1 else 0 })
++            put(ini, "Renderer", "texture_sampling", options.textureSampling)
++            put(ini, "Core", "cpu_clock_percentage", options.cpuClockPercent)
++            put(ini, "Renderer", "use_frame_limit",
++                options.speedLimitPercent?.let { if (it == 0) 0 else 1 })
++            put(ini, "Renderer", "frame_limit", options.speedLimitPercent?.let { if (it == 0) 100 else it })
++
++            if (options.boost) {
++                ini.put("Renderer", "use_vsync", 0)
++                ini.put("Renderer", "async_shader_compilation", 1)
++                ini.put("Renderer", "async_presentation", 1)
++                ini.put("Renderer", "use_hw_shader", 1)
++                ini.put("Renderer", "use_disk_shader_cache", 1)
++                ini.put("Renderer", "use_skip_duplicate_frames", 1)
++                ini.put("Core", "use_cpu_jit", 1)
++            } else {
++                BOOST_KEYS.forEach { (section, key) -> ini.remove(section, key) }
++            }
++
++            val out = CitraApplication.appContext.contentResolver.openOutputStream(file.uri, "wt")
++                ?: return false
++            out.use { ini.store(it) }
++            return true
++        } catch (e: Exception) {
++            Log.error("[PerGameSettings] save failed: ${e.message}")
++            return false
++        }
++    }
++
++    /** Toggles only the 60 FPS patch flag, leaving the rest of the game's overrides intact. */
 +    fun save60fps(titleId: Long, enabled: Boolean): Boolean {
 +        try {
 +            val cfg = configDir() ?: return false
@@ -269,79 +547,123 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 +                Wini()
 +            }
 +            ini.put("Renderer", "use_60fps_patch", if (enabled) 1 else 0)
-+            val output = CitraApplication.appContext.contentResolver.openOutputStream(file.uri, "wt")
-+                ?: return false
-+            output.use { ini.store(it) }
-+            return true
-+        } catch (e: Exception) {
-+            Log.error("[PerGameSettings] save60fps failed: " + e.message)
-+            return false
-+        }
-+    }
-+
-+    /** Writes the overrides, or deletes the file when [Values.enabled] is false. */
-+    fun save(titleId: Long, values: Values): Boolean {
-+        try {
-+            val cfg = configDir() ?: return false
-+            if (!values.enabled) {
-+                cfg.findFile(DIR)?.findFile(fileName(titleId))?.delete()
-+                return true
-+            }
-+            val dir = cfg.findFile(DIR) ?: cfg.createDirectory(DIR) ?: return false
-+            val file = FileUtil.createFile(dir.uri.toString(), fileName(titleId)) ?: return false
-+
-+            val ini = Wini()
-+            ini.put("Renderer", "use_frame_limit", if (values.speedLimitPercent == 0) 0 else 1)
-+            ini.put("Renderer", "frame_limit", if (values.speedLimitPercent == 0) 100 else values.speedLimitPercent)
-+            ini.put("Renderer", "resolution_factor", values.resolutionFactor)
-+            ini.put("Renderer", "use_60fps_patch", if (values.patch60fps) 1 else 0)
-+            ini.put("Core", "cpu_clock_percentage", values.cpuClockPercent)
-+            if (values.boost) {
-+                ini.put("Renderer", "use_vsync", 0)
-+                ini.put("Renderer", "async_shader_compilation", 1)
-+                ini.put("Renderer", "async_presentation", 1)
-+                ini.put("Renderer", "use_hw_shader", 1)
-+                ini.put("Renderer", "use_disk_shader_cache", 1)
-+                ini.put("Renderer", "use_skip_duplicate_frames", 1)
-+                ini.put("Core", "use_cpu_jit", 1)
-+            }
 +            val out = CitraApplication.appContext.contentResolver.openOutputStream(file.uri, "wt")
 +                ?: return false
 +            out.use { ini.store(it) }
 +            return true
 +        } catch (e: Exception) {
-+            Log.error("[PerGameSettings] save failed: ${e.message}")
++            Log.error("[PerGameSettings] save60fps failed: ${e.message}")
 +            return false
 +        }
 +    }
 +}
-diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/fragments/GamesFragment.kt b/src/android/app/src/main/java/org/citra/citra_emu/fragments/GamesFragment.kt
---- a/src/android/app/src/main/java/org/citra/citra_emu/fragments/GamesFragment.kt	2026-10-11 20:10:47.802845648 +0000
-+++ b/src/android/app/src/main/java/org/citra/citra_emu/fragments/GamesFragment.kt	2026-10-11 20:10:49.170602435 +0000
-@@ -160,7 +160,7 @@
-         binding.gridGames.apply {
-             layoutManager = GridLayoutManager(
-                 requireContext(),
--                resources.getInteger(R.integer.game_grid_columns)
-+                resources.getInteger(R.integer.game_grid_columns)
-             )
-             adapter = this@GamesFragment.gameAdapter
-         }
-diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/fragments/SearchFragment.kt b/src/android/app/src/main/java/org/citra/citra_emu/fragments/SearchFragment.kt
---- a/src/android/app/src/main/java/org/citra/citra_emu/fragments/SearchFragment.kt	2026-10-11 20:10:47.803785452 +0000
-+++ b/src/android/app/src/main/java/org/citra/citra_emu/fragments/SearchFragment.kt	2026-10-11 20:10:49.172172617 +0000
-@@ -112,7 +112,7 @@
-         binding.gridGamesSearch.apply {
-             layoutManager = GridLayoutManager(
-                 requireContext(),
--                resources.getInteger(R.integer.game_grid_columns)
-+                resources.getInteger(R.integer.game_grid_columns)
-             )
-             adapter = this@SearchFragment.gameAdapter
-         }
+diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
+--- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt	2026-10-12 01:32:52.157885663 +0000
++++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt	2026-10-12 03:36:52.412645304 +0000
+@@ -108,6 +108,67 @@
+     ): HashMap<String, SettingSection?> = readFile(getCustomGameSettingsFile(gameId), true, view)
+ 
+     /**
++     * Save only values that differ from the global configuration. This means a per-game setting
++     * automatically inherits global changes until the user explicitly changes that value.
++     */
++    fun saveCustomGameSettings(
++        gameId: String,
++        sections: HashMap<String, SettingSection?>,
++        view: SettingsActivityView
++    ) {
++        try {
++            val globalSections = readFile(FILE_NAME_CONFIG)
++            val writer = Wini()
++            for ((sectionName, section) in sections) {
++                if (section == null) continue
++                for (setting in section.settings.values) {
++                    val key = setting.key ?: continue
++                    val globalSetting = globalSections[sectionName]?.getSetting(key)
++                    if (globalSetting == null || globalSetting.valueAsString != setting.valueAsString) {
++                        writer.put(sectionName, key, setting.valueAsString)
++                    }
++                }
++            }
++            val target = getCustomGameSettingsFile(gameId)
++            val output = CitraApplication.appContext.contentResolver.openOutputStream(target.uri, "wt")
++                ?: throw IOException("Unable to open per-game settings file")
++            output.use { writer.store(it) }
++            view.showToastMessage(CitraApplication.appContext.getString(R.string.ini_saved), false)
++        } catch (e: Exception) {
++            Log.error("[SettingsFile] Error saving per-game settings: ${e.message}")
++            view.showToastMessage(
++                CitraApplication.appContext.getString(R.string.error_saving, gameId, e.message),
++                false
++            )
++        }
++    }
++
++    /**
++     * Saves a single setting to this game's override file instead of the global configuration.
++     * The settings screen uses this whenever a game is selected, so tuning one game can never leak
++     * into config.ini or reset the other per-game values.
++     */
++    fun saveCustomGameSetting(gameId: String, setting: AbstractSetting) {
++        try {
++            val context: Context = CitraApplication.appContext
++            val ini = getCustomGameSettingsFile(gameId)
++            val inputStream = context.contentResolver.openInputStream(ini.uri)
++            val writer = if (inputStream != null && ini.length() > 0L) {
++                Wini(inputStream)
++            } else {
++                Wini()
++            }
++            inputStream?.close()
++            writer.put(setting.section, setting.key, setting.valueAsString)
++            val outputStream = context.contentResolver.openOutputStream(ini.uri, "wt")
++                ?: throw IOException("Unable to open per-game settings file")
++            outputStream.use { writer.store(it) }
++        } catch (e: Exception) {
++            Log.error("[SettingsFile] Error saving per-game setting: ${e.message}")
++        }
++    }
++
++    /**
+      * Saves a Settings HashMap to a given .ini file on disk. If unsuccessful, outputs an error
+      * telling why it failed.
+      *
+@@ -184,8 +245,13 @@
+ 
+     private fun getCustomGameSettingsFile(gameId: String): DocumentFile {
+         val root = DocumentFile.fromTreeUri(CitraApplication.appContext, Uri.parse(userDirectory))
+-        val configDirectory = root!!.findFile("GameSettings")
+-        return configDirectory!!.findFile("$gameId.ini")!!
++        val configDirectory = root!!.findFile("config") ?: root.createDirectory("config")
++            ?: throw IOException("Unable to create config directory")
++        val customDirectory = configDirectory.findFile("custom") ?: configDirectory.createDirectory("custom")
++            ?: throw IOException("Unable to create per-game settings directory")
++        return customDirectory.findFile("$gameId.ini")
++            ?: customDirectory.createFile("text/plain", "$gameId.ini")
++            ?: throw IOException("Unable to create per-game settings file")
+     }
+ 
+     private fun sectionFromLine(line: String, isCustomGame: Boolean): SettingSection {
+diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/fragments/EmulationFragment.kt b/src/android/app/src/main/java/org/citra/citra_emu/fragments/EmulationFragment.kt
+--- a/src/android/app/src/main/java/org/citra/citra_emu/fragments/EmulationFragment.kt	2026-10-12 01:32:52.157885663 +0000
++++ b/src/android/app/src/main/java/org/citra/citra_emu/fragments/EmulationFragment.kt	2026-10-12 03:31:56.442384216 +0000
+@@ -401,10 +401,12 @@
+                 }
+ 
+                 R.id.menu_settings -> {
++                    // Edit this title's overrides rather than silently changing the global config.
++                    val runningTitleId = NativeLibrary.getRunningTitleId()
+                     SettingsActivity.launch(
+                         requireContext(),
+                         SettingsFile.FILE_NAME_CONFIG,
+-                        ""
++                        if (runningTitleId == 0L) "" else String.format("%016X", runningTitleId)
+                     )
+ 
+                     true
 diff -ruN a/src/android/app/src/main/jni/config.cpp b/src/android/app/src/main/jni/config.cpp
---- a/src/android/app/src/main/jni/config.cpp	2026-10-11 20:10:47.845000264 +0000
-+++ b/src/android/app/src/main/jni/config.cpp	2026-10-11 20:10:49.180718551 +0000
+--- a/src/android/app/src/main/jni/config.cpp	2026-10-12 01:32:52.165885663 +0000
++++ b/src/android/app/src/main/jni/config.cpp	2026-10-12 03:31:44.063061798 +0000
 @@ -37,8 +37,46 @@
      Reload();
  }
@@ -389,7 +711,7 @@ diff -ruN a/src/android/app/src/main/jni/config.cpp b/src/android/app/src/main/j
  bool Config::LoadINI(const std::string& default_contents, bool retry) {
      const std::string& location = this->android_config_loc;
      if (android_config == nullptr || android_config->ParseError() < 0) {
-@@ -80,7 +117,7 @@
+@@ -80,7 +118,7 @@
  template <>
  void Config::ReadSetting(const std::string& group, Settings::Setting<std::string>& setting) {
      std::string setting_value =
@@ -398,7 +720,7 @@ diff -ruN a/src/android/app/src/main/jni/config.cpp b/src/android/app/src/main/j
      if (setting_value.empty()) {
          setting_value = setting.GetDefault();
      }
-@@ -89,16 +126,19 @@
+@@ -89,16 +127,19 @@
  
  template <>
  void Config::ReadSetting(const std::string& group, Settings::Setting<bool>& setting) {
@@ -422,7 +744,9 @@ diff -ruN a/src/android/app/src/main/jni/config.cpp b/src/android/app/src/main/j
      }
  }
  
-@@ -140,7 +180,8 @@
+@@ -138,9 +179,10 @@
+     ReadSetting("Core", Settings::values.cpu_clock_percentage);
+ 
      // Renderer
 -    Settings::values.use_gles = android_config->GetBoolean("Renderer", "use_gles", true);
 +    Settings::values.use_gles = SourceFor("Renderer", "use_gles").GetBoolean("Renderer", "use_gles", true);
@@ -433,7 +757,7 @@ diff -ruN a/src/android/app/src/main/jni/config.cpp b/src/android/app/src/main/j
      ReadSetting("Renderer", Settings::values.graphics_api);
      ReadSetting("Renderer", Settings::values.async_presentation);
      ReadSetting("Renderer", Settings::values.async_shader_compilation);
-@@ -155,8 +196,10 @@
+@@ -155,8 +197,10 @@
      ReadSetting("Renderer", Settings::values.texture_filter);
      ReadSetting("Renderer", Settings::values.texture_sampling);
      ReadSetting("Renderer", Settings::values.turbo_limit);
@@ -446,8 +770,8 @@ diff -ruN a/src/android/app/src/main/jni/config.cpp b/src/android/app/src/main/j
      } else {
          Settings::values.frame_limit = 0;
 diff -ruN a/src/android/app/src/main/jni/config.h b/src/android/app/src/main/jni/config.h
---- a/src/android/app/src/main/jni/config.h	2026-10-11 20:10:47.849129182 +0000
-+++ b/src/android/app/src/main/jni/config.h	2026-10-11 20:10:49.180778707 +0000
+--- a/src/android/app/src/main/jni/config.h	2026-10-12 01:32:52.165885663 +0000
++++ b/src/android/app/src/main/jni/config.h	2026-10-12 03:31:44.063061798 +0000
 @@ -13,13 +13,21 @@
  class Config {
  private:
@@ -471,8 +795,8 @@ diff -ruN a/src/android/app/src/main/jni/config.h b/src/android/app/src/main/jni
  
      void Reload();
 diff -ruN a/src/android/app/src/main/jni/default_ini.h b/src/android/app/src/main/jni/default_ini.h
---- a/src/android/app/src/main/jni/default_ini.h	2026-10-11 20:10:47.849517492 +0000
-+++ b/src/android/app/src/main/jni/default_ini.h	2026-10-11 20:10:49.180834696 +0000
+--- a/src/android/app/src/main/jni/default_ini.h	2026-10-12 01:32:52.165885663 +0000
++++ b/src/android/app/src/main/jni/default_ini.h	2026-10-12 03:31:44.067061798 +0000
 @@ -160,6 +160,11 @@
  # 1 - 9999: Speed limit as a percentage of target game speed. 100 (default)
  )") DECLARE_KEY(turbo_limit) BOOST_HANA_STRING(R"(
@@ -486,8 +810,8 @@ diff -ruN a/src/android/app/src/main/jni/default_ini.h b/src/android/app/src/mai
  # Must be in range of 0.0-1.0. Defaults to 0.0 for all.
  )") DECLARE_KEY(bg_red) BOOST_HANA_STRING(R"(
 diff -ruN a/src/android/app/src/main/jni/native.cpp b/src/android/app/src/main/jni/native.cpp
---- a/src/android/app/src/main/jni/native.cpp	2026-10-11 20:10:47.852191148 +0000
-+++ b/src/android/app/src/main/jni/native.cpp	2026-10-11 20:10:49.181886117 +0000
+--- a/src/android/app/src/main/jni/native.cpp	2026-10-12 01:32:52.165885663 +0000
++++ b/src/android/app/src/main/jni/native.cpp	2026-10-12 03:31:44.067061798 +0000
 @@ -285,9 +285,7 @@
          break;
      }
@@ -528,7 +852,7 @@ diff -ruN a/src/android/app/src/main/jni/native.cpp b/src/android/app/src/main/j
          multiplayer->UpdateCredentials();
 diff -ruN a/src/android/app/src/main/res/drawable/home_menu_background.xml b/src/android/app/src/main/res/drawable/home_menu_background.xml
 --- a/src/android/app/src/main/res/drawable/home_menu_background.xml	1970-01-01 00:00:00.000000000 +0000
-+++ b/src/android/app/src/main/res/drawable/home_menu_background.xml	2026-10-11 20:10:49.243110104 +0000
++++ b/src/android/app/src/main/res/drawable/home_menu_background.xml	2026-10-12 03:31:44.067061798 +0000
 @@ -0,0 +1,8 @@
 +<?xml version="1.0" encoding="utf-8"?>
 +<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
@@ -540,7 +864,7 @@ diff -ruN a/src/android/app/src/main/res/drawable/home_menu_background.xml b/src
 +</shape>
 diff -ruN a/src/android/app/src/main/res/drawable/home_tile_icon_frame.xml b/src/android/app/src/main/res/drawable/home_tile_icon_frame.xml
 --- a/src/android/app/src/main/res/drawable/home_tile_icon_frame.xml	1970-01-01 00:00:00.000000000 +0000
-+++ b/src/android/app/src/main/res/drawable/home_tile_icon_frame.xml	2026-10-11 20:10:49.243290950 +0000
++++ b/src/android/app/src/main/res/drawable/home_tile_icon_frame.xml	2026-10-12 03:31:44.067061798 +0000
 @@ -0,0 +1,6 @@
 +<?xml version="1.0" encoding="utf-8"?>
 +<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
@@ -549,8 +873,8 @@ diff -ruN a/src/android/app/src/main/res/drawable/home_tile_icon_frame.xml b/src
 +    <stroke android:width="1dp" android:color="#343B49" />
 +</shape>
 diff -ruN a/src/android/app/src/main/res/layout/card_game.xml b/src/android/app/src/main/res/layout/card_game.xml
---- a/src/android/app/src/main/res/layout/card_game.xml	2026-10-11 20:10:47.948722346 +0000
-+++ b/src/android/app/src/main/res/layout/card_game.xml	2026-10-11 20:10:49.244621561 +0000
+--- a/src/android/app/src/main/res/layout/card_game.xml	2026-10-12 01:32:52.185885663 +0000
++++ b/src/android/app/src/main/res/layout/card_game.xml	2026-10-12 03:31:44.067061798 +0000
 @@ -1,92 +1,68 @@
  <?xml version="1.0" encoding="utf-8"?>
 +<!-- 3DS HOME-menu style tile: big rounded square icon with a short title underneath. -->
@@ -699,8 +1023,8 @@ diff -ruN a/src/android/app/src/main/res/layout/card_game.xml b/src/android/app/
 +    </LinearLayout>
  </com.google.android.material.card.MaterialCardView>
 diff -ruN a/src/android/app/src/main/res/layout/dialog_about_game.xml b/src/android/app/src/main/res/layout/dialog_about_game.xml
---- a/src/android/app/src/main/res/layout/dialog_about_game.xml	2026-10-11 20:10:47.949001683 +0000
-+++ b/src/android/app/src/main/res/layout/dialog_about_game.xml	2026-10-11 20:10:49.244809389 +0000
+--- a/src/android/app/src/main/res/layout/dialog_about_game.xml	2026-10-12 01:32:52.185885663 +0000
++++ b/src/android/app/src/main/res/layout/dialog_about_game.xml	2026-10-12 03:31:44.067061798 +0000
 @@ -173,6 +173,24 @@
              app:layout_constraintTop_toBottomOf="@+id/horizontal_layout">
  
@@ -728,8 +1052,8 @@ diff -ruN a/src/android/app/src/main/res/layout/dialog_about_game.xml b/src/andr
                  android:layout_width="wrap_content"
 diff -ruN a/src/android/app/src/main/res/layout/dialog_per_game_settings.xml b/src/android/app/src/main/res/layout/dialog_per_game_settings.xml
 --- a/src/android/app/src/main/res/layout/dialog_per_game_settings.xml	1970-01-01 00:00:00.000000000 +0000
-+++ b/src/android/app/src/main/res/layout/dialog_per_game_settings.xml	2026-10-11 20:10:49.249758754 +0000
-@@ -0,0 +1,35 @@
++++ b/src/android/app/src/main/res/layout/dialog_per_game_settings.xml	2026-10-12 03:36:40.026691399 +0000
+@@ -0,0 +1,184 @@
 +<?xml version="1.0" encoding="utf-8"?>
 +<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
 +    xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -747,8 +1071,28 @@ diff -ruN a/src/android/app/src/main/res/layout/dialog_per_game_settings.xml b/s
 +            style="@style/TextAppearance.Material3.BodyMedium"
 +            android:layout_width="match_parent"
 +            android:layout_height="wrap_content"
-+            android:layout_marginBottom="12dp"
++            android:layout_marginBottom="16dp"
 +            android:text="@string/koji_menu_description" />
++
++        <TextView
++            style="@style/TextAppearance.Material3.TitleSmall"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginBottom="8dp"
++            android:text="@string/koji_performance_label" />
++
++        <com.google.android.material.materialswitch.MaterialSwitch
++            android:id="@+id/pg_boost"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:text="@string/pg_boost" />
++
++        <TextView
++            style="@style/TextAppearance.Material3.BodySmall"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginBottom="12dp"
++            android:text="@string/pg_boost_description" />
 +
 +        <com.google.android.material.materialswitch.MaterialSwitch
 +            android:id="@+id/pg_60fps"
@@ -757,17 +1101,146 @@ diff -ruN a/src/android/app/src/main/res/layout/dialog_per_game_settings.xml b/s
 +            android:text="@string/pg_60fps" />
 +
 +        <TextView
-+            android:id="@+id/pg_60fps_description"
 +            style="@style/TextAppearance.Material3.BodySmall"
 +            android:layout_width="match_parent"
 +            android:layout_height="wrap_content"
 +            android:layout_marginBottom="12dp"
 +            android:text="@string/pg_60fps_description" />
++
++        <TextView
++            android:id="@+id/pg_cpu_clock_label"
++            style="@style/TextAppearance.Material3.BodyMedium"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content" />
++
++        <com.google.android.material.slider.Slider
++            android:id="@+id/pg_cpu_clock"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:stepSize="1"
++            android:value="100"
++            android:valueFrom="25"
++            android:valueTo="200"
++            app:labelBehavior="gone" />
++
++        <TextView
++            style="@style/TextAppearance.Material3.BodySmall"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginBottom="12dp"
++            android:text="@string/pg_cpu_clock_description" />
++
++        <TextView
++            android:id="@+id/pg_speed_limit_label"
++            style="@style/TextAppearance.Material3.BodyMedium"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content" />
++
++        <com.google.android.material.slider.Slider
++            android:id="@+id/pg_speed_limit"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:stepSize="1"
++            android:value="100"
++            android:valueFrom="0"
++            android:valueTo="200"
++            app:labelBehavior="gone" />
++
++        <TextView
++            style="@style/TextAppearance.Material3.BodySmall"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginBottom="16dp"
++            android:text="@string/pg_limit_description" />
++
++        <TextView
++            style="@style/TextAppearance.Material3.TitleSmall"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginBottom="8dp"
++            android:text="@string/koji_visuals_label" />
++
++        <TextView
++            android:id="@+id/pg_resolution_label"
++            style="@style/TextAppearance.Material3.BodyMedium"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content" />
++
++        <com.google.android.material.slider.Slider
++            android:id="@+id/pg_resolution"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:stepSize="1"
++            android:value="1"
++            android:valueFrom="1"
++            android:valueTo="4"
++            app:labelBehavior="gone" />
++
++        <TextView
++            style="@style/TextAppearance.Material3.BodySmall"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginBottom="12dp"
++            android:text="@string/pg_resolution_description" />
++
++        <com.google.android.material.textfield.TextInputLayout
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginBottom="4dp"
++            android:hint="@string/pg_texture_filter"
++            app:endIconMode="dropdown_menu">
++
++            <com.google.android.material.textfield.MaterialAutoCompleteTextView
++                android:id="@+id/pg_texture_filter"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:inputType="none" />
++        </com.google.android.material.textfield.TextInputLayout>
++
++        <TextView
++            style="@style/TextAppearance.Material3.BodySmall"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginBottom="12dp"
++            android:text="@string/pg_texture_filter_description" />
++
++        <com.google.android.material.materialswitch.MaterialSwitch
++            android:id="@+id/pg_linear_filter"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:text="@string/pg_linear_filter" />
++
++        <TextView
++            style="@style/TextAppearance.Material3.BodySmall"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginBottom="12dp"
++            android:text="@string/pg_linear_filter_description" />
++
++        <com.google.android.material.textfield.TextInputLayout
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginBottom="4dp"
++            android:hint="@string/pg_sampling"
++            app:endIconMode="dropdown_menu">
++
++            <com.google.android.material.textfield.MaterialAutoCompleteTextView
++                android:id="@+id/pg_sampling"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:inputType="none" />
++        </com.google.android.material.textfield.TextInputLayout>
++
++        <TextView
++            style="@style/TextAppearance.Material3.BodySmall"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:text="@string/pg_sampling_description" />
 +    </LinearLayout>
 +</ScrollView>
 diff -ruN a/src/android/app/src/main/res/layout/fragment_games.xml b/src/android/app/src/main/res/layout/fragment_games.xml
---- a/src/android/app/src/main/res/layout/fragment_games.xml	2026-10-11 20:10:47.952838508 +0000
-+++ b/src/android/app/src/main/res/layout/fragment_games.xml	2026-10-11 20:10:49.247555685 +0000
+--- a/src/android/app/src/main/res/layout/fragment_games.xml	2026-10-12 01:32:52.189885663 +0000
++++ b/src/android/app/src/main/res/layout/fragment_games.xml	2026-10-12 03:31:44.067061798 +0000
 @@ -5,7 +5,7 @@
      android:id="@+id/swipe_refresh"
      android:layout_width="match_parent"
@@ -778,9 +1251,9 @@ diff -ruN a/src/android/app/src/main/res/layout/fragment_games.xml b/src/android
  
      <RelativeLayout
 diff -ruN a/src/android/app/src/main/res/values/strings.xml b/src/android/app/src/main/res/values/strings.xml
---- a/src/android/app/src/main/res/values/strings.xml	2026-10-11 20:10:47.969667761 +0000
-+++ b/src/android/app/src/main/res/values/strings.xml	2026-10-11 20:10:49.259098369 +0000
-@@ -1120,4 +1120,24 @@
+--- a/src/android/app/src/main/res/values/strings.xml	2026-10-12 01:32:52.201885663 +0000
++++ b/src/android/app/src/main/res/values/strings.xml	2026-10-12 03:36:47.336038328 +0000
+@@ -1120,4 +1120,48 @@
      <string name="update_check_channel_stable">Stable</string>
      <string name="update_check_channel_prerelease">Prerelease</string>
  
@@ -790,7 +1263,7 @@ diff -ruN a/src/android/app/src/main/res/values/strings.xml b/src/android/app/sr
 +    <string name="pg_button">Game settings</string>
 +    <string name="koji_menu_title">Koji menu</string>
 +    <string name="koji_menu_button">Koji menu</string>
-+    <string name="koji_menu_description">Koji options for this game only. The 60 FPS option requires a compatible game-specific patch.</string>
++    <string name="koji_menu_description">Koji options for this game only. They are stored with the game and never change your global settings. The 60 FPS option requires a compatible game-specific patch.</string>
 +    <string name="pg_save">Save</string>
 +    <string name="pg_use_custom">Use custom settings for this game</string>
 +    <string name="pg_use_custom_description">When off, this game uses your global settings.</string>
@@ -804,10 +1277,34 @@ diff -ruN a/src/android/app/src/main/res/values/strings.xml b/src/android/app/sr
 +    <string name="pg_cpu_label">CPU clock: %1$d%%</string>
 +    <string name="pg_saved">Game settings saved</string>
 +    <string name="pg_save_failed">Could not save game settings</string>
++    <string name="koji_performance_label">Performance</string>
++    <string name="koji_visuals_label">Visuals</string>
++    <string name="pg_cpu_clock_description">Underclocking can bring slow games back to full speed. 100% matches the real console.</string>
++    <string name="pg_limit_description">Caps the game speed. Unlimited removes the cap entirely; 100% is normal speed.</string>
++    <string name="pg_resolution_description">Renders the screens at a higher internal resolution. Higher values look sharper and cost more GPU time.</string>
++    <string name="pg_texture_filter">Texture filter</string>
++    <string name="pg_texture_filter_description">Post-processes game textures to make them look sharper. Anime4K and MMPX are the cheapest options.</string>
++    <string name="pg_linear_filter">Linear filtering</string>
++    <string name="pg_linear_filter_description">Smooths the scaled image. Turn it off for crisper pixels and slightly less GPU work.</string>
++    <string name="pg_sampling">Texture sampling override</string>
++    <string name="pg_sampling_description">Forces the sampling filter games ask for, which helps when upscaling poorly behaved games.</string>
++    <string-array name="pg_texture_filter_names">
++        <item>No filter</item>
++        <item>Anime4K</item>
++        <item>Bicubic</item>
++        <item>ScaleForce</item>
++        <item>xBRZ</item>
++        <item>MMPX</item>
++    </string-array>
++    <string-array name="pg_sampling_names">
++        <item>Game controlled</item>
++        <item>Nearest neighbor</item>
++        <item>Linear</item>
++    </string-array>
  </resources>
 diff -ruN a/src/android/app/src/main/res/values/styles.xml b/src/android/app/src/main/res/values/styles.xml
---- a/src/android/app/src/main/res/values/styles.xml	2026-10-11 20:10:47.969970809 +0000
-+++ b/src/android/app/src/main/res/values/styles.xml	2026-10-11 20:10:49.259196581 +0000
+--- a/src/android/app/src/main/res/values/styles.xml	2026-10-12 01:32:52.201885663 +0000
++++ b/src/android/app/src/main/res/values/styles.xml	2026-10-12 03:31:44.071061798 +0000
 @@ -6,4 +6,9 @@
          <item name="labelBehavior">gone</item>
      </style>
@@ -820,7 +1317,7 @@ diff -ruN a/src/android/app/src/main/res/values/styles.xml b/src/android/app/src
  </resources>
 diff -ruN a/src/android/app/src/main/res/values/tile_integers.xml b/src/android/app/src/main/res/values/tile_integers.xml
 --- a/src/android/app/src/main/res/values/tile_integers.xml	1970-01-01 00:00:00.000000000 +0000
-+++ b/src/android/app/src/main/res/values/tile_integers.xml	2026-10-11 20:10:49.259399631 +0000
++++ b/src/android/app/src/main/res/values/tile_integers.xml	2026-10-12 03:31:44.071061798 +0000
 @@ -0,0 +1,4 @@
 +<?xml version="1.0" encoding="utf-8"?>
 +<resources>
@@ -828,15 +1325,24 @@ diff -ruN a/src/android/app/src/main/res/values/tile_integers.xml b/src/android/
 +</resources>
 diff -ruN a/src/android/app/src/main/res/values-land/tile_integers.xml b/src/android/app/src/main/res/values-land/tile_integers.xml
 --- a/src/android/app/src/main/res/values-land/tile_integers.xml	1970-01-01 00:00:00.000000000 +0000
-+++ b/src/android/app/src/main/res/values-land/tile_integers.xml	2026-10-11 20:10:49.259664878 +0000
++++ b/src/android/app/src/main/res/values-land/tile_integers.xml	2026-10-12 03:31:44.071061798 +0000
 @@ -0,0 +1,4 @@
 +<?xml version="1.0" encoding="utf-8"?>
 +<resources>
 +    <integer name="game_tile_columns">7</integer>
 +</resources>
 diff -ruN a/src/common/settings.h b/src/common/settings.h
---- a/src/common/settings.h	2026-10-11 20:10:48.096983925 +0000
-+++ b/src/common/settings.h	2026-10-11 20:10:49.288620856 +0000
+--- a/src/common/settings.h	2026-10-12 01:32:52.233885663 +0000
++++ b/src/common/settings.h	2026-10-12 03:31:56.442384216 +0000
+@@ -534,7 +534,7 @@
+     Setting<bool> dump_command_buffers{false, Keys::dump_command_buffers};
+     SwitchableSetting<bool> spirv_shader_gen{true, Keys::spirv_shader_gen};
+     SwitchableSetting<bool> disable_spirv_optimizer{true, Keys::disable_spirv_optimizer};
+-    SwitchableSetting<bool> async_shader_compilation{false, Keys::async_shader_compilation};
++    SwitchableSetting<bool> async_shader_compilation{true, Keys::async_shader_compilation};
+     SwitchableSetting<bool> async_presentation{true, Keys::async_presentation};
+     SwitchableSetting<bool> use_hw_shader{true, Keys::use_hw_shader};
+     SwitchableSetting<bool> use_disk_shader_cache{true, Keys::use_disk_shader_cache};
 @@ -552,6 +552,7 @@
      SwitchableSetting<bool> use_integer_scaling{false, Keys::use_integer_scaling};
      SwitchableSetting<double, true> frame_limit{100, 0, 1000, Keys::frame_limit};
@@ -846,8 +1352,8 @@ diff -ruN a/src/common/settings.h b/src/common/settings.h
      SwitchableSetting<TextureSampling> texture_sampling{TextureSampling::GameControlled,
                                                          Keys::texture_sampling};
 diff -ruN a/src/core/file_sys/ncch_container.cpp b/src/core/file_sys/ncch_container.cpp
---- a/src/core/file_sys/ncch_container.cpp	2026-10-11 20:10:48.113778593 +0000
-+++ b/src/core/file_sys/ncch_container.cpp	2026-10-11 20:10:49.298150901 +0000
+--- a/src/core/file_sys/ncch_container.cpp	2026-10-12 01:32:52.245885663 +0000
++++ b/src/core/file_sys/ncch_container.cpp	2026-10-12 03:31:56.442384216 +0000
 @@ -18,6 +18,7 @@
  #include "core/file_sys/seed_db.h"
  #include "core/hw/aes/key.h"
@@ -856,143 +1362,142 @@ diff -ruN a/src/core/file_sys/ncch_container.cpp b/src/core/file_sys/ncch_contai
  #include "core/loader/loader.h"
  
  namespace FileSys {
-@@ -34,6 +35,25 @@
+@@ -34,6 +35,30 @@
  }
  
  /**
-+ * Directory holding user patches for a title. With the per-game "60 FPS patch" option enabled, and
-+ * a patch folder present, load/60fps/<TITLEID>/ is used instead of load/mods/<TITLEID>/. It has the
-+ * same layout (exefs/code.ips, romfs/, exheader.bin ...).
++ * Directories holding user patches for a title, most specific first. Both folders share the same
++ * layout (exefs/code.ips, romfs/, exheader.bin ...). The per-game "60 FPS patch" option prepends
++ * load/60fps/<TITLEID>/ so a 60 FPS patch layers on top of a game's other mods instead of
++ * replacing them; enabling it therefore never silently disables load/mods/<TITLEID>/.
 + */
-+static std::string GetModsPath(u64 program_id) {
++static std::vector<std::string> GetModsPaths(u64 program_id) {
 +    const auto& load_dir = FileUtil::GetUserPath(FileUtil::UserPath::LoadDir);
 +    const u64 id = GetModId(program_id);
++    std::vector<std::string> paths;
 +    if (Settings::values.use_60fps_patch.GetValue()) {
 +        auto fps_path = fmt::format("{}60fps/{:016X}/", load_dir, id);
 +        if (FileUtil::Exists(fps_path)) {
-+            LOG_INFO(Service_FS, "Using 60 FPS patch folder {}", fps_path);
-+            return fps_path;
++            LOG_INFO(Service_FS, "Layering 60 FPS patch folder {}", fps_path);
++            paths.push_back(std::move(fps_path));
++        } else {
++            LOG_WARNING(Service_FS, "60 FPS patch enabled but load/60fps/{:016X}/ does not exist",
++                        id);
 +        }
-+        LOG_WARNING(Service_FS, "60 FPS patch enabled but {} does not exist", fps_path);
 +    }
-+    return fmt::format("{}mods/{:016X}/", load_dir, id);
++    paths.push_back(fmt::format("{}mods/{:016X}/", load_dir, id));
++    return paths;
 +}
 +
 +/**
   * Get the decompressed size of an LZSS compressed ExeFS file
   * @param buffer Buffer of compressed file
   * @param size Size of compressed buffer
-@@ -286,8 +306,7 @@
+@@ -285,13 +310,11 @@
+                 return Loader::ResultStatus::Error;
              }
  
-             const auto mods_path =
+-            const auto mods_path =
 -                fmt::format("{}mods/{:016X}/", FileUtil::GetUserPath(FileUtil::UserPath::LoadDir),
 -                            GetModId(ncch_header.program_id));
-+                GetModsPath(ncch_header.program_id);
-             const std::array<std::string, 2> exheader_override_paths{{
-                 mods_path + "exheader.bin",
-                 filepath + ".exheader",
-@@ -511,8 +530,7 @@
+-            const std::array<std::string, 2> exheader_override_paths{{
+-                mods_path + "exheader.bin",
+-                filepath + ".exheader",
+-            }};
++            std::vector<std::string> exheader_override_paths;
++            for (const auto& mods_path : GetModsPaths(ncch_header.program_id)) {
++                exheader_override_paths.push_back(mods_path + "exheader.bin");
++            }
++            exheader_override_paths.push_back(filepath + ".exheader");
+ 
+             bool has_exheader_override = false;
+             for (const auto& path : exheader_override_paths) {
+@@ -510,9 +533,7 @@
+         Loader::ResultStatus (*patch_fn)(const std::vector<u8>& patch, std::vector<u8>& code);
      };
  
-     const auto mods_path =
+-    const auto mods_path =
 -        fmt::format("{}mods/{:016X}/", FileUtil::GetUserPath(FileUtil::UserPath::LoadDir),
 -                    GetModId(ncch_header.program_id));
-+        GetModsPath(ncch_header.program_id);
++    const auto mods_paths = GetModsPaths(ncch_header.program_id);
  
      constexpr u32 system_module_tid_high = 0x00040130;
  
-@@ -573,8 +591,7 @@
+@@ -527,15 +548,16 @@
+             fmt::format("{}luma/titles/{:016X}/code.ips",
+                         FileUtil::GetUserPath(FileUtil::UserPath::SDMCDir), ncch_header.program_id);
+     }
+-    const std::array<PatchLocation, 7> patch_paths{{
+-        {mods_path + "exefs/code.ips", Patch::ApplyIpsPatch},
+-        {mods_path + "exefs/code.bps", Patch::ApplyBpsPatch},
+-        {mods_path + "code.ips", Patch::ApplyIpsPatch},
+-        {mods_path + "code.bps", Patch::ApplyBpsPatch},
+-        {luma_ips_location, Patch::ApplyIpsPatch},
+-        {filepath + ".exefsdir/code.ips", Patch::ApplyIpsPatch},
+-        {filepath + ".exefsdir/code.bps", Patch::ApplyBpsPatch},
+-    }};
++    std::vector<PatchLocation> patch_paths;
++    for (const auto& mods_path : mods_paths) {
++        patch_paths.push_back({mods_path + "exefs/code.ips", Patch::ApplyIpsPatch});
++        patch_paths.push_back({mods_path + "exefs/code.bps", Patch::ApplyBpsPatch});
++        patch_paths.push_back({mods_path + "code.ips", Patch::ApplyIpsPatch});
++        patch_paths.push_back({mods_path + "code.bps", Patch::ApplyBpsPatch});
++    }
++    patch_paths.push_back({luma_ips_location, Patch::ApplyIpsPatch});
++    patch_paths.push_back({filepath + ".exefsdir/code.ips", Patch::ApplyIpsPatch});
++    patch_paths.push_back({filepath + ".exefsdir/code.bps", Patch::ApplyBpsPatch});
+ 
+     for (const PatchLocation& info : patch_paths) {
+         FileUtil::IOFile patch_file{info.path, "rb"};
+@@ -572,14 +594,12 @@
+     else
          return Loader::ResultStatus::Error;
  
-     const auto mods_path =
+-    const auto mods_path =
 -        fmt::format("{}mods/{:016X}/", FileUtil::GetUserPath(FileUtil::UserPath::LoadDir),
 -                    GetModId(ncch_header.program_id));
-+        GetModsPath(ncch_header.program_id);
-     const std::array<std::string, 3> override_paths{{
-         mods_path + "exefs/" + override_name,
-         mods_path + override_name,
-@@ -638,8 +655,7 @@
+-    const std::array<std::string, 3> override_paths{{
+-        mods_path + "exefs/" + override_name,
+-        mods_path + override_name,
+-        filepath + ".exefsdir/" + override_name,
+-    }};
++    std::vector<std::string> override_paths;
++    for (const auto& mods_path : GetModsPaths(ncch_header.program_id)) {
++        override_paths.push_back(mods_path + "exefs/" + override_name);
++        override_paths.push_back(mods_path + override_name);
++    }
++    override_paths.push_back(filepath + ".exefsdir/" + override_name);
+ 
+     for (const auto& path : override_paths) {
+         FileUtil::IOFile section_file(path, "rb");
+@@ -637,17 +657,20 @@
+         std::make_shared<DirectRomFSReader>(std::make_unique<FileUtil::SubIOFile>(
              std::move(romfs_file_inner), romfs_offset, romfs_size));
  
-     const auto path =
+-    const auto path =
 -        fmt::format("{}mods/{:016X}/", FileUtil::GetUserPath(FileUtil::UserPath::LoadDir),
 -                    GetModId(ncch_header.program_id));
-+        GetModsPath(ncch_header.program_id);
-     if (!is_proto && use_layered_fs &&
-         (FileUtil::Exists(path + "romfs/") || FileUtil::Exists(path + "romfs_ext/"))) {
- 
-diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt
---- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt
-+++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt
-@@ -74,6 +74,6 @@
-                 SettingsFile.saveFile(fileName, iniSections, view)
-             }
-         } else {
--            // TODO: Implement per game settings
-+            SettingsFile.saveCustomGameSettings(gameId!!, sections, view)
-         }
-     }
-diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
---- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
-+++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
-@@ -108,0 +109,36 @@
-+
-+    /**
-+     * Save only values that differ from the global configuration. This means a per-game setting
-+     * automatically inherits global changes until the user explicitly changes that value.
-+     */
-+    fun saveCustomGameSettings(
-+        gameId: String,
-+        sections: HashMap<String, SettingSection?>,
-+        view: SettingsActivityView
-+    ) {
-+        try {
-+            val globalSections = readFile(FILE_NAME_CONFIG)
-+            val writer = Wini()
-+            for ((sectionName, section) in sections) {
-+                if (section == null) continue
-+                for (setting in section.settings.values) {
-+                    val key = setting.key ?: continue
-+                    val globalSetting = globalSections[sectionName]?.getSetting(key)
-+                    if (globalSetting == null || globalSetting.valueAsString != setting.valueAsString) {
-+                        writer.put(sectionName, key, setting.valueAsString)
-+                    }
-+                }
+-    if (!is_proto && use_layered_fs &&
+-        (FileUtil::Exists(path + "romfs/") || FileUtil::Exists(path + "romfs_ext/"))) {
+-
+-        romfs_file = std::make_shared<LayeredFS>(std::move(direct_romfs), path + "romfs/",
+-                                                 path + "romfs_ext/");
+-    } else {
+-        romfs_file = std::move(direct_romfs);
++    std::shared_ptr<RomFSReader> layered_romfs = std::move(direct_romfs);
++    if (!is_proto && use_layered_fs) {
++        // Wrap from least to most specific so the 60 FPS patch takes precedence while mods that
++        // only exist in load/mods/<TITLEID>/ keep working.
++        const auto mods_paths = GetModsPaths(ncch_header.program_id);
++        for (auto it = mods_paths.rbegin(); it != mods_paths.rend(); ++it) {
++            const auto& path = *it;
++            if (FileUtil::Exists(path + "romfs/") || FileUtil::Exists(path + "romfs_ext/")) {
++                layered_romfs = std::make_shared<LayeredFS>(layered_romfs, path + "romfs/",
++                                                            path + "romfs_ext/");
 +            }
-+            val target = getCustomGameSettingsFile(gameId)
-+            val output = CitraApplication.appContext.contentResolver.openOutputStream(target.uri, "wt")
-+                ?: throw IOException("Unable to open per-game settings file")
-+            output.use { writer.store(it) }
-+            view.showToastMessage(CitraApplication.appContext.getString(R.string.ini_saved), false)
-+        } catch (e: Exception) {
-+            Log.error("[SettingsFile] Error saving per-game settings: ${e.message}")
-+            view.showToastMessage(
-+                CitraApplication.appContext.getString(R.string.error_saving, gameId, e.message),
-+                false
-+            )
 +        }
-+    }
-@@ -179,5 +215,10 @@
-     private fun getCustomGameSettingsFile(gameId: String): DocumentFile {
-         val root = DocumentFile.fromTreeUri(CitraApplication.appContext, Uri.parse(userDirectory))
--        val configDirectory = root!!.findFile("GameSettings")
--        return configDirectory!!.findFile("$gameId.ini")!!
-+        val configDirectory = root!!.findFile("config") ?: root.createDirectory("config")
-+            ?: throw IOException("Unable to create config directory")
-+        val customDirectory = configDirectory.findFile("custom") ?: configDirectory.createDirectory("custom")
-+            ?: throw IOException("Unable to create per-game settings directory")
-+        return customDirectory.findFile("$gameId.ini")
-+            ?: customDirectory.createFile("text/plain", "$gameId.ini")
-+            ?: throw IOException("Unable to create per-game settings file")
      }
-diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/SettingsFragmentPresenter.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/SettingsFragmentPresenter.kt
---- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/SettingsFragmentPresenter.kt
-+++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/SettingsFragmentPresenter.kt
-@@ -82,5 +82,5 @@
-     fun loadSettingsList() {
-         if (!TextUtils.isEmpty(gameId)) {
--            settingsActivity.setToolbarTitle("Application Settings: $gameId")
-+            settingsActivity.setToolbarTitle("Game Settings: $gameId")
-         }
-         val sl = ArrayList<SettingsItem>()
++    romfs_file = std::move(layered_romfs);
+ 
+     return Loader::ResultStatus::Success;
+ }
