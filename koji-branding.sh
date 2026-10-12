@@ -197,7 +197,7 @@ if "ShapeAppearance.Koji.Medium" in text:
     raise SystemExit("Koji styles are already present; refusing to duplicate them.")
 koji_styles = '''
     <!-- Koji shape language: generous, softly rounded surfaces. -->
-    <style name="ShapeAppearance.Koji.ExtraSmall">
+    <style name="ShapeAppearance.Koji.ExtraSmall" parent="">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">10dp</item>
     </style>
