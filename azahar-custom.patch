@@ -971,7 +971,7 @@ diff -ruN a/src/core/file_sys/ncch_container.cpp b/src/core/file_sys/ncch_contai
 diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt
 --- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt
 +++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt
-@@ -74,7 +74,7 @@
+@@ -74,6 +74,6 @@
                  SettingsFile.saveFile(fileName, iniSections, view)
              }
          } else {
@@ -983,7 +983,7 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
 --- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
 +++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
-@@ -104,7 +104,39 @@
+@@ -104,4 +104,40 @@
      fun readCustomGameSettings(
          gameId: String,
          view: SettingsActivityView?
@@ -1024,7 +1024,7 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 +            )
 +        }
 +    }
-@@ -179,10 +211,17 @@
+@@ -179,5 +215,10 @@
      private fun getCustomGameSettingsFile(gameId: String): DocumentFile {
          val root = DocumentFile.fromTreeUri(CitraApplication.appContext, Uri.parse(userDirectory))
 -        val configDirectory = root!!.findFile("GameSettings")
