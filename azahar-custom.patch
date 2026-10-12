@@ -991,7 +991,7 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
 --- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
 +++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
-@@ -104,4 +104,40 @@
+@@ -105,4 +105,40 @@
      fun readCustomGameSettings(
          gameId: String,
          view: SettingsActivityView?
