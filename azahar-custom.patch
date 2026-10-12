@@ -330,7 +330,7 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/fragments/SearchFr
 diff -ruN a/src/android/app/src/main/jni/config.cpp b/src/android/app/src/main/jni/config.cpp
 --- a/src/android/app/src/main/jni/config.cpp	2026-10-11 20:10:47.845000264 +0000
 +++ b/src/android/app/src/main/jni/config.cpp	2026-10-11 20:10:49.180718551 +0000
-@@ -37,8 +37,49 @@
+@@ -37,8 +37,52 @@
      Reload();
  }
  
@@ -341,6 +341,9 @@ diff -ruN a/src/android/app/src/main/jni/config.cpp b/src/android/app/src/main/j
 +
 +    const std::string game_loc =
 +        FileUtil::GetUserPath(FileUtil::UserPath::ConfigDir) + "custom/" + title_id_hex + ".ini";
++    if (!FileUtil::Exists(game_loc)) {
++        return;
++    }
 +    std::string game_buffer;
 +    FileUtil::ReadFileToString(true, game_loc, game_buffer);
 +    if (game_buffer.empty()) {
