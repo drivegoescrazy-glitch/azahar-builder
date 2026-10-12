@@ -94,10 +94,23 @@ jobs:
           chmod +x koji-branding.sh
           ./koji-branding.sh
 
+      - name: Restore native build intermediates
+        uses: actions/cache@v4
+        with:
+          path: |
+            azahar/src/android/.cxx
+            azahar/src/android/app/.cxx
+            azahar/src/android/app/build/intermediates/cxx
+          key: koji-native-${{ runner.os }}-${{ steps.ver.outputs.tag }}-${{ hashFiles('azahar-custom.patch', 'koji-branding.sh') }}
+          restore-keys: |
+            koji-native-${{ runner.os }}-${{ steps.ver.outputs.tag }}-
+
       - name: Install build tools
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends ccache apksigner
+          if ! command -v ccache >/dev/null 2>&1 || ! command -v apksigner >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y --no-install-recommends ccache apksigner
+          fi
           if [ ! -x "${ANDROID_SDK_ROOT}/cmake/3.30.3/bin/cmake" ]; then
             echo "Installing Android CMake 3.30.3"
             echo "y" | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" "cmake;3.30.3"
