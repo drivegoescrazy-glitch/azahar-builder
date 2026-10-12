@@ -411,7 +411,8 @@ diff -ruN a/src/android/app/src/main/jni/config.cpp b/src/android/app/src/main/j
  
 @@ -140,7 +180,8 @@
      // Renderer
-     Settings::values.use_gles = android_config->GetBoolean("Renderer", "use_gles", true);
+-    Settings::values.use_gles = android_config->GetBoolean("Renderer", "use_gles", true);
++    Settings::values.use_gles = SourceFor("Renderer", "use_gles").GetBoolean("Renderer", "use_gles", true);
      Settings::values.shaders_accurate_mul =
 -        android_config->GetBoolean("Renderer", "shaders_accurate_mul", false);
 +        SourceFor("Renderer", "shaders_accurate_mul")
@@ -680,7 +681,7 @@ diff -ruN a/src/android/app/src/main/res/layout/card_game.xml b/src/android/app/
 +            android:ellipsize="end"
 +            android:gravity="center"
 +            android:maxLines="2"
-+            android:textColor="#4A4A4A"
++            android:textColor="#F5F7FA"
 +            tools:text="The Legend of Zelda: Ocarina of Time 3D" />
 +    </LinearLayout>
  </com.google.android.material.card.MaterialCardView>
