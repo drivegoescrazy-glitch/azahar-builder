@@ -150,7 +150,33 @@ jobs:
         run: |
           cd src/android
           chmod +x ./gradlew
-          ./gradlew --build-cache --parallel --max-workers=4 assembleVanillaRelease
+          set -o pipefail
+          ./gradlew --build-cache --parallel --max-workers=4 assembleVanillaRelease 2>&1 \
+            | tee "$GITHUB_WORKSPACE/koji-build.log"
+
+      # Build logs need a signed-in repository admin to view, so on failure the interesting part of
+      # the Gradle output is republished where anyone can read it: as an annotation and in the run
+      # summary. This makes a red run diagnosable without repository access.
+      - name: Publish build log on failure
+        if: failure()
+        run: |
+          LOG="$GITHUB_WORKSPACE/koji-build.log"
+          if [ ! -f "$LOG" ]; then
+            echo "No build log was captured."
+            exit 0
+          fi
+          SNIP=$(grep -n -i -E '^e: |^w: .*(error)|error:|FAILURE:|What went wrong|Caused by:|Execution failed|not found' "$LOG" | head -40 || true)
+          if [ -z "$SNIP" ]; then
+            SNIP=$(tail -40 "$LOG")
+          fi
+          ESCAPED=$(printf '%s' "$SNIP" | head -c 6000 | sed ':a;N;$!ba;s/\n/%0A/g')
+          echo "::error title=Gradle build failure::${ESCAPED}"
+          {
+            echo "### Koji build log (last 300 lines)"
+            echo '```'
+            tail -300 "$LOG"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Show compiler cache statistics
         if: always()
