@@ -32,7 +32,7 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/adapters/GameAdapt
  import org.citra.citra_emu.databinding.CardGameBinding
  import org.citra.citra_emu.databinding.DialogShortcutBinding
  import org.citra.citra_emu.features.cheats.ui.CheatsFragmentDirections
-+import org.citra.citra_emu.features.settings.ui.PerGameSettingsDialog
++import org.citra.citra_emu.features.settings.ui.SettingsActivity
  import org.citra.citra_emu.fragments.IndeterminateProgressDialogFragment
  import org.citra.citra_emu.model.Game
  import org.citra.citra_emu.utils.BuildUtil
@@ -93,7 +93,7 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/adapters/GameAdapt
              }
  
 +        bottomSheetView.findViewById<MaterialButton>(R.id.game_settings).setOnClickListener {
-+            PerGameSettingsDialog.show(context, game)
++            SettingsActivity.launch(context, SettingsFile.FILE_NAME_CONFIG, String.format("%016X", game.titleId))
 +        }
 +
          bottomSheetView.findViewById<MaterialButton>(R.id.game_shortcut).setOnClickListener {
@@ -967,3 +967,73 @@ diff -ruN a/src/core/file_sys/ncch_container.cpp b/src/core/file_sys/ncch_contai
      if (!is_proto && use_layered_fs &&
          (FileUtil::Exists(path + "romfs/") || FileUtil::Exists(path + "romfs_ext/"))) {
  
+
+diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt
+--- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt
++++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt
+@@ -74,7 +74,7 @@
+                 SettingsFile.saveFile(fileName, iniSections, view)
+             }
+         } else {
+-            // TODO: Implement per game settings
++            SettingsFile.saveCustomGameSettings(gameId!!, sections, view)
+         }
+     }
+
+diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
+--- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
++++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
+@@ -104,7 +104,39 @@
+     fun readCustomGameSettings(
+         gameId: String,
+         view: SettingsActivityView?
+     ): HashMap<String, SettingSection?> = readFile(getCustomGameSettingsFile(gameId), true, view)
++
++    /**
++     * Save only values that differ from the global configuration. This means a per-game setting
++     * automatically inherits global changes until the user explicitly changes that value.
++     */
++    fun saveCustomGameSettings(
++        gameId: String,
++        sections: HashMap<String, SettingSection?>,
++        view: SettingsActivityView
++    ) {
++        try {
++            val globalSections = readFile(FILE_NAME_CONFIG)
++            val writer = Wini()
++            for ((sectionName, section) in sections) {
++                if (section == null) continue
++                for (setting in section.settings.values) {
++                    val key = setting.key ?: continue
++                    val globalSetting = globalSections[sectionName]?.getSetting(key)
++                    if (globalSetting == null || globalSetting.valueAsString != setting.valueAsString) {
++                        writer.put(sectionName, key, setting.valueAsString)
++                    }
++                }
++            }
++            val target = getCustomGameSettingsFile(gameId)
++            val output = CitraApplication.appContext.contentResolver.openOutputStream(target.uri, "wt")
++                ?: throw IOException("Unable to open per-game settings file")
++            output.use { writer.store(it) }
++            view.showToastMessage(CitraApplication.appContext.getString(R.string.ini_saved), false)
++        } catch (e: Exception) {
++            Log.error("[SettingsFile] Error saving per-game settings: ${e.message}")
++            view.showToastMessage(
++                CitraApplication.appContext.getString(R.string.error_saving, gameId, e.message),
++                false
++            )
++        }
++    }
+@@ -179,10 +211,17 @@
+     private fun getCustomGameSettingsFile(gameId: String): DocumentFile {
+         val root = DocumentFile.fromTreeUri(CitraApplication.appContext, Uri.parse(userDirectory))
+-        val configDirectory = root!!.findFile("GameSettings")
+-        return configDirectory!!.findFile("$gameId.ini")!!
++        val configDirectory = root!!.findFile("config") ?: root.createDirectory("config")
++            ?: throw IOException("Unable to create config directory")
++        val customDirectory = configDirectory.findFile("custom") ?: configDirectory.createDirectory("custom")
++            ?: throw IOException("Unable to create per-game settings directory")
++        return customDirectory.findFile("$gameId.ini")
++            ?: customDirectory.createFile("text/plain", "$gameId.ini")
++            ?: throw IOException("Unable to create per-game settings file")
+     }
