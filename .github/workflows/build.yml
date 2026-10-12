@@ -10,6 +10,10 @@ on:
         description: "Azahar release tag to build (blank = newest release)"
         required: false
         default: ""
+      abis:
+        description: "Comma-separated ABIs to build (blank = arm64-v8a). Use arm64-v8a,x86_64 for emulators."
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -31,6 +35,10 @@ jobs:
       CMAKE_BUILD_PARALLEL_LEVEL: 4
       MAKEFLAGS: -j4
       JAVA_TOOL_OPTIONS: -XX:ActiveProcessorCount=4
+      # Native compilation dominates the build, so only the ABI(s) we actually ship are
+      # compiled. Blank/arm64-v8a builds the phone APK; arm64-v8a,x86_64 restores the
+      # universal APK used for emulators (at roughly double the native build cost).
+      KOJI_ABIS: ${{ inputs.abis }}
       # Keep Gradle's JVM heap large enough to avoid memory pressure during Kotlin/native builds.
       GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g\ -XX:MaxMetaspaceSize=1g\ -Dfile.encoding=UTF-8
 
@@ -56,13 +64,17 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # Cache keys are content-addressed (tag + patch/branding hash) instead of per-run.
+      # A unique key per run would write a fresh multi-gigabyte entry on every build and
+      # push older entries out of the repository's 10 GB cache budget, which evicts the
+      # very caches that make repeat builds fast.
       - name: Restore Gradle dependency and build caches
         uses: actions/cache@v4
         with:
           path: |
             .gradle-cache/caches
             .gradle-cache/wrapper
-          key: koji-gradle-${{ runner.os }}-jdk17-${{ github.run_id }}-${{ github.run_attempt }}
+          key: koji-gradle-${{ runner.os }}-jdk17-${{ steps.ver.outputs.tag }}
           restore-keys: |
             koji-gradle-${{ runner.os }}-jdk17-
             koji-gradle-${{ runner.os }}-
@@ -77,7 +89,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .ccache
-          key: koji-ccache-${{ runner.os }}-${{ steps.ver.outputs.tag }}-${{ hashFiles('azahar-custom.patch') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: koji-ccache-${{ runner.os }}-${{ steps.ver.outputs.tag }}-${{ hashFiles('azahar-custom.patch', 'koji-branding.sh') }}
           restore-keys: |
             koji-ccache-${{ runner.os }}-${{ steps.ver.outputs.tag }}-
             koji-ccache-${{ runner.os }}-
@@ -114,7 +126,7 @@ jobs:
             azahar/src/android/.cxx
             azahar/src/android/app/.cxx
             azahar/src/android/app/build/intermediates/cxx
-          key: koji-native-${{ runner.os }}-${{ steps.ver.outputs.tag }}-${{ hashFiles('azahar-custom.patch') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: koji-native-${{ runner.os }}-${{ steps.ver.outputs.tag }}-${{ hashFiles('azahar-custom.patch', 'koji-branding.sh') }}
           restore-keys: |
             koji-native-${{ runner.os }}-${{ steps.ver.outputs.tag }}-
 

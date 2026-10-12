@@ -9,6 +9,27 @@ diff -ruN a/CMakeModules/GenerateSettingKeys.cmake b/CMakeModules/GenerateSettin
      "texture_filter"
      "texture_sampling"
      "delay_game_render_thread_us"
+diff -ruN a/src/android/app/build.gradle.kts b/src/android/app/build.gradle.kts
+--- a/src/android/app/build.gradle.kts	2026-10-12 01:32:52.149885663 +0000
++++ b/src/android/app/build.gradle.kts	2026-10-12 01:43:37.326595000 +0000
+@@ -21,7 +21,15 @@
+  * next 680 years.
+  */
+ val autoVersion = (((System.currentTimeMillis() / 1000) - 1451606400) / 10).toInt()
+-val abiFilter = listOf("arm64-v8a", "x86_64")
++// Koji: native compilation dominates CI build time, and a release APK for phones only
++// needs arm64-v8a. Set the KOJI_ABIS environment variable (e.g. "arm64-v8a,x86_64") to
++// build additional ABIs such as x86_64 for emulators.
++val abiFilter = System.getenv("KOJI_ABIS")
++    ?.split(',')
++    ?.map { it.trim() }
++    ?.filter { it.isNotEmpty() }
++    ?.takeIf { it.isNotEmpty() }
++    ?: listOf("arm64-v8a")
+ 
+ val downloadedJniLibsPath = "${layout.buildDirectory.get().asFile.path}/downloadedJniLibs"
+ 
+
 diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/adapters/GameAdapter.kt b/src/android/app/src/main/java/org/citra/citra_emu/adapters/GameAdapter.kt
 --- a/src/android/app/src/main/java/org/citra/citra_emu/adapters/GameAdapter.kt	2026-10-11 20:10:47.791067820 +0000
 +++ b/src/android/app/src/main/java/org/citra/citra_emu/adapters/GameAdapter.kt	2026-10-11 20:10:49.154962183 +0000
@@ -28,10 +49,11 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/adapters/GameAdapt
  import com.google.android.material.dialog.MaterialAlertDialogBuilder
  import kotlinx.coroutines.CoroutineScope
  import kotlinx.coroutines.Dispatchers
-@@ -53,6 +51,8 @@
+@@ -53,6 +51,9 @@
  import org.citra.citra_emu.databinding.CardGameBinding
  import org.citra.citra_emu.databinding.DialogShortcutBinding
  import org.citra.citra_emu.features.cheats.ui.CheatsFragmentDirections
++import org.citra.citra_emu.features.settings.ui.PerGameSettingsDialog
 +import org.citra.citra_emu.features.settings.ui.SettingsActivity
 +import org.citra.citra_emu.features.settings.utils.SettingsFile
  import org.citra.citra_emu.fragments.IndeterminateProgressDialogFragment
@@ -257,7 +279,7 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 +        }
 +    }
 +
-++    /** Writes the overrides, or deletes the file when [Values.enabled] is false. */
++    /** Writes the overrides, or deletes the file when [Values.enabled] is false. */
 +    fun save(titleId: Long, values: Values): Boolean {
 +        try {
 +            val cfg = configDir() ?: return false
@@ -692,7 +714,6 @@ diff -ruN a/src/android/app/src/main/res/layout/dialog_about_game.xml b/src/andr
 +                android:text="@string/pg_button" />
 +
 +            <com.google.android.material.button.MaterialButton
-+            <com.google.android.material.button.MaterialButton
 +                android:id="@+id/game_koji_menu"
 +                style="@style/Widget.Material3.Button.TonalButton.Icon"
 +                android:layout_width="wrap_content"
@@ -701,6 +722,7 @@ diff -ruN a/src/android/app/src/main/res/layout/dialog_about_game.xml b/src/andr
 +                android:contentDescription="@string/koji_menu_button"
 +                android:text="@string/koji_menu_button" />
 +
++            <com.google.android.material.button.MaterialButton
                  android:id="@+id/cheats"
                  style="@style/Widget.Material3.Button.TonalButton.Icon"
                  android:layout_width="wrap_content"
