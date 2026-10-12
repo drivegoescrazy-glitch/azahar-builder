@@ -118,7 +118,7 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/PerGameSettingsDialog.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/PerGameSettingsDialog.kt
 --- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/PerGameSettingsDialog.kt	1970-01-01 00:00:00.000000000 +0000
 +++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/PerGameSettingsDialog.kt	2026-10-11 20:10:49.168563013 +0000
-@@ -0,0 +1,42 @@
+@@ -0,0 +1,40 @@
 +// Licensed under GPLv2 or any later version
 +// Refer to the license.txt file included.
 +
@@ -148,9 +148,7 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 +            .setTitle(context.getString(R.string.koji_menu_title) + ": " + game.title)
 +            .setView(view)
 +            .setPositiveButton(R.string.pg_save) { _, _ ->
-+                values.enabled = true
-+                values.patch60fps = patch.isChecked
-+                val saved = PerGameSettings.save(game.titleId, values)
++                val saved = PerGameSettings.save60fps(game.titleId, patch.isChecked)
 +                Toast.makeText(
 +                    context,
 +                    if (saved) R.string.pg_saved else R.string.pg_save_failed,
@@ -164,7 +162,7 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/PerGameSettings.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/PerGameSettings.kt
 --- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/PerGameSettings.kt	1970-01-01 00:00:00.000000000 +0000
 +++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/PerGameSettings.kt	2026-10-11 20:10:49.168907744 +0000
-@@ -0,0 +1,103 @@
+@@ -0,0 +1,130 @@
 +// Licensed under GPLv2 or any later version
 +// Refer to the license.txt file included.
 +
@@ -232,7 +230,34 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 +        return values
 +    }
 +
-+    /** Writes the overrides, or deletes the file when [Values.enabled] is false. */
++    /** Updates only the Koji 60 FPS flag, preserving all other per-game settings. */
++    fun save60fps(titleId: Long, enabled: Boolean): Boolean {
++        try {
++            val cfg = configDir() ?: return false
++            val dir = cfg.findFile(DIR) ?: cfg.createDirectory(DIR) ?: return false
++            var file = dir.findFile(fileName(titleId))
++            if (file == null) {
++                file = FileUtil.createFile(dir.uri.toString(), fileName(titleId)) ?: return false
++            }
++            val ini = if (file.length() > 0L) {
++                val input = CitraApplication.appContext.contentResolver.openInputStream(file.uri)
++                    ?: return false
++                input.use { Wini(it) }
++            } else {
++                Wini()
++            }
++            ini.put("Renderer", "use_60fps_patch", if (enabled) 1 else 0)
++            val output = CitraApplication.appContext.contentResolver.openOutputStream(file.uri, "wt")
++                ?: return false
++            output.use { ini.store(it) }
++            return true
++        } catch (e: Exception) {
++            Log.error("[PerGameSettings] save60fps failed: " + e.message)
++            return false
++        }
++    }
++
+++    /** Writes the overrides, or deletes the file when [Values.enabled] is false. */
 +    fun save(titleId: Long, values: Values): Boolean {
 +        try {
 +            val cfg = configDir() ?: return false
