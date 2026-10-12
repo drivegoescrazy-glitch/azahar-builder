@@ -64,7 +64,8 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Validate persistent release signing identity
+      - name: Select APK signing mode
+        id: signing
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
@@ -162,9 +163,10 @@ jobs:
         working-directory: azahar
         env:
           NDK_CCACHE: /usr/bin/ccache
-          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/kojii-release.jks
+          ANDROID_KEYSTORE_FILE: ${{ steps.signing.outputs.keystore_file }}
           ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KOJII_UNSIGNED_RELEASE: ${{ steps.signing.outputs.mode == 'unsigned' }}
         run: |
           cd src/android
           chmod +x ./gradlew
@@ -205,20 +207,38 @@ jobs:
             echo "ccache was not installed; no compiler-cache statistics available."
           fi
 
-      - name: Verify APK signer and package metadata
+      - name: Verify APK signer
+        if: steps.signing.outputs.mode == 'signed'
         run: |
           set -euo pipefail
           APK_DIR="azahar/src/android/app/build/outputs/apk/vanilla/release"
           for apk in "$APK_DIR"/*.apk; do
             apksigner verify --verbose --print-certs "$apk" | tee "${apk%.apk}-signer.txt"
           done
+
+      - name: Verify package metadata and report signing mode
+        env:
+          SIGNING_MODE: ${{ steps.signing.outputs.mode }}
+        run: |
           python3 - <<'PYMETA'
           import json
+          import os
           from pathlib import Path
           metadata = json.loads(Path("azahar/src/android/app/build/outputs/apk/vanilla/release/output-metadata.json").read_text())
           assert metadata["applicationId"] == "org.azahar_emu.azahar", "Package identity changed; updates would break"
           assert all(e["versionCode"] > 0 for e in metadata["elements"])
-          print("Update package identity and version codes verified")
+          mode = os.environ["SIGNING_MODE"]
+          assert mode in ("signed", "unsigned")
+          if mode == "unsigned":
+              for element in metadata["elements"]:
+                  assert element["outputFile"].endswith("-unsigned.apk"), "Unexpected unsigned output name"
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write(f"### Kojii APK: {mode}\n")
+              if mode == "unsigned":
+                  summary.write("Not installable yet. Sign with the original app key before installation or updating.\n")
+              else:
+                  summary.write("Signed with the configured persistent key. Compare the signer with the installed version before updating.\n")
+          print("Package identity, version codes and signing mode verified")
           PYMETA
 
       - name: Remove temporary signing key
@@ -229,7 +249,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: kojii-${{ steps.ver.outputs.tag }}
+          name: kojii-${{ steps.ver.outputs.tag }}-${{ steps.signing.outputs.mode }}
           path: |
             azahar/src/android/app/build/outputs/apk/vanilla/release/*.apk
             azahar/src/android/app/build/outputs/apk/vanilla/release/*-signer.txt

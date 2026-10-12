@@ -88,8 +88,15 @@ fingerprint; compare it with `apksigner verify --print-certs previous.apk` befor
 **If the original private key is lost, code cannot make Android accept an in-place update.**
 A newly created key only establishes a stable identity for future builds after migration.
 Back up and verify user-folder saves/config/installed data before any reinstall; do not
-uninstall merely because an update fails. Release CI is intentionally blocked until signing
-secrets are configured instead of distributing another incompatible APK.
+uninstall merely because an update fails.
+
+With **none** of the three signing secrets configured, CI builds a clearly labeled
+`kojii-<version>-unsigned` artifact rather than failing before compilation. This APK is
+**not installable or update-ready** until signed with the original key. Gradle requires
+explicit `KOJII_UNSIGNED_RELEASE=true` for this mode; it never uses a fresh debug key.
+With all three secrets configured, CI builds `kojii-<version>-signed` and verifies its signer.
+Partial credentials, an invalid keystore, a wrong alias, or a bad password still fail:
+those are configuration errors, not a reason to silently produce unsigned output.
 
 ## 60 FPS is not turbo
 

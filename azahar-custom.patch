@@ -38,16 +38,24 @@ diff -ruN a/src/android/app/build.gradle.kts b/src/android/app/build.gradle.kts
  
          ndk {
              //noinspection ChromeOsAbiSupport
-@@ -93,7 +101,22 @@
+@@ -93,7 +101,29 @@
          buildConfigField("String", "BRANCH", "\"${getBranch()}\"")
      }
  
+-    val keystoreFile = System.getenv("ANDROID_KEYSTORE_FILE")
 +    // Preserve the package ID and use one backed-up signing identity across every release.
-     val keystoreFile = System.getenv("ANDROID_KEYSTORE_FILE")
++    val keystoreFile = System.getenv("ANDROID_KEYSTORE_FILE")?.takeIf { it.isNotBlank() }
++    val unsignedRelease = System.getenv("KOJII_UNSIGNED_RELEASE") == "true"
++    if (unsignedRelease) {
++        require(keystoreFile == null && System.getenv("ANDROID_KEYSTORE_PASS").isNullOrBlank() &&
++            System.getenv("ANDROID_KEY_ALIAS").isNullOrBlank()) {
++            "Unsigned mode cannot be combined with signing credentials"
++        }
++    }
 +    val releaseRequested = gradle.startParameter.taskNames.any {
 +        it.contains("Release", ignoreCase = true)
 +    }
-+    if (releaseRequested) {
++    if (releaseRequested && !unsignedRelease) {
 +        require(!keystoreFile.isNullOrBlank() && file(keystoreFile).isFile) {
 +            "Release signing key missing. Configure ANDROID_KEYSTORE_FILE; never rotate CI debug keys."
 +        }
@@ -61,12 +69,12 @@ diff -ruN a/src/android/app/build.gradle.kts b/src/android/app/build.gradle.kts
      if (keystoreFile != null) {
          signingConfigs {
              create("release") {
-@@ -112,7 +135,7 @@
+@@ -112,7 +142,7 @@
              signingConfig = if (keystoreFile != null) {
                  signingConfigs.getByName("release")
              } else {
 -                signingConfigs.getByName("debug")
-+                null // Local configuration/debug tasks may run; release tasks fail above.
++                null // Only explicit unsigned mode may assemble a release without credentials.
              }
              isMinifyEnabled = true
              isShrinkResources = true
