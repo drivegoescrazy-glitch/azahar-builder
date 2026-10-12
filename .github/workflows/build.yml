@@ -64,7 +64,7 @@ jobs:
       - name: Restore Android CMake package
         uses: actions/cache@v4
         with:
-          path: ${{ env.ANDROID_SDK_ROOT }}/cmake/3.30.3
+          path: /usr/local/lib/android/sdk/cmake/3.30.3
           key: koji-cmake-${{ runner.os }}-3.30.3
 
       - name: Restore native compiler cache
@@ -77,7 +77,7 @@ jobs:
             koji-ccache-${{ runner.os }}-
 
       - name: Download Azahar source (with submodules)
-        run: git clone --recursive --depth 1 --branch "${{ steps.ver.outputs.tag }}" https://github.com/azahar-emu/azahar azahar
+        run: git clone --recursive --depth 1 --shallow-submodules --branch "${{ steps.ver.outputs.tag }}" https://github.com/azahar-emu/azahar azahar
 
       - name: Apply Koji emulator patch
         working-directory: azahar
@@ -101,7 +101,7 @@ jobs:
             azahar/src/android/.cxx
             azahar/src/android/app/.cxx
             azahar/src/android/app/build/intermediates/cxx
-          key: koji-native-${{ runner.os }}-${{ steps.ver.outputs.tag }}-${{ hashFiles('azahar-custom.patch', 'koji-branding.sh') }}
+          key: koji-native-${{ runner.os }}-${{ steps.ver.outputs.tag }}-${{ hashFiles('azahar-custom.patch') }}
           restore-keys: |
             koji-native-${{ runner.os }}-${{ steps.ver.outputs.tag }}-
 
