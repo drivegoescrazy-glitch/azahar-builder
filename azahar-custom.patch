@@ -1038,3 +1038,14 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 +            ?: customDirectory.createFile("text/plain", "$gameId.ini")
 +            ?: throw IOException("Unable to create per-game settings file")
      }
+
+diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/SettingsFragmentPresenter.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/SettingsFragmentPresenter.kt
+--- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/SettingsFragmentPresenter.kt
++++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/SettingsFragmentPresenter.kt
+@@ -82,7 +82,7 @@
+     fun loadSettingsList() {
+         if (!TextUtils.isEmpty(gameId)) {
+-            settingsActivity.setToolbarTitle("Application Settings: $gameId")
++            settingsActivity.setToolbarTitle("Game Settings: $gameId")
+         }
+         val sl = ArrayList<SettingsItem>()
