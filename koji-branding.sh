@@ -69,7 +69,7 @@ s = layout.read_text()
 # The root card width must be fixed for a horizontal RecyclerView; match_parent makes each
 # carousel item stretch across the screen and produces the oversized, awkward cards.
 s, count = re.subn(
-    r'(<com\\.google\\.android\\.material\\.card\\.MaterialCardView[^>]*?android:layout_width=")match_parent(")',
+    r'(<com\.google\.android\.material\.card\.MaterialCardView[^>]*?android:layout_width=")match_parent(")',
     r'\\g<1>190dp\\g<2>',
     s,
     count=1,
@@ -85,7 +85,7 @@ search_fragment = root / "java/org/citra/citra_emu/fragments/SearchFragment.kt"
 s = search_fragment.read_text()
 s = s.replace("import androidx.recyclerview.widget.GridLayoutManager", "import androidx.recyclerview.widget.LinearLayoutManager")
 pattern = re.compile(
-    r"layoutManager = GridLayoutManager\\(\\s*requireContext\\(\\),\\s*resources\\.getInteger\\(R\\.integer\\.game_grid_columns\\)\\s*\\)",
+    r"layoutManager = GridLayoutManager\(\s*requireContext\(\),\s*resources\.getInteger\(R\.integer\.game_grid_columns\)\s*\)",
     re.MULTILINE,
 )
 replacement = """layoutManager = LinearLayoutManager(
