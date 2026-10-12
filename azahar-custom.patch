@@ -330,33 +330,37 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/fragments/SearchFr
 diff -ruN a/src/android/app/src/main/jni/config.cpp b/src/android/app/src/main/jni/config.cpp
 --- a/src/android/app/src/main/jni/config.cpp	2026-10-11 20:10:47.845000264 +0000
 +++ b/src/android/app/src/main/jni/config.cpp	2026-10-11 20:10:49.180718551 +0000
-@@ -37,8 +37,45 @@
+@@ -37,8 +37,49 @@
      Reload();
  }
  
-+Config::Config(const std::string& title_id_hex) {
-+    android_config_loc = FileUtil::GetUserPath(FileUtil::UserPath::ConfigDir) + "config.ini";
++Config::Config(const std::string& title_id_hex) : Config() {
++    if (title_id_hex.empty()) {
++        return;
++    }
++
++    const std::string game_loc =
++        FileUtil::GetUserPath(FileUtil::UserPath::ConfigDir) + "custom/" + title_id_hex + ".ini";
++    std::string game_buffer;
++    FileUtil::ReadFileToString(true, game_loc, game_buffer);
++    if (game_buffer.empty()) {
++        return;
++    }
++
++    // Append per-game values after the global INI. INIReader's last-value-wins behaviour means
++    // this single merged reader also covers settings read directly in ReadValues(), not just
++    // settings that go through ReadSetting().
 +    std::string ini_buffer;
 +    FileUtil::ReadFileToString(true, android_config_loc, ini_buffer);
-+    if (!ini_buffer.empty()) {
-+        android_config = std::make_unique<INIReader>(ini_buffer.c_str(), ini_buffer.size());
++    ini_buffer += "\n\n" + game_buffer;
++    auto merged_config = std::make_unique<INIReader>(ini_buffer.c_str(), ini_buffer.size());
++    if (merged_config->ParseError() < 0) {
++        LOG_ERROR(Config, "Failed to parse per-game settings from {}", game_loc);
++        return;
 +    }
 +
-+    if (!title_id_hex.empty()) {
-+        const std::string game_loc =
-+            FileUtil::GetUserPath(FileUtil::UserPath::ConfigDir) + "custom/" + title_id_hex + ".ini";
-+        std::string game_buffer;
-+        FileUtil::ReadFileToString(true, game_loc, game_buffer);
-+        if (!game_buffer.empty()) {
-+            game_config = std::make_unique<INIReader>(game_buffer.c_str(), game_buffer.size());
-+            if (game_config->ParseError() < 0) {
-+                game_config.reset();
-+            } else {
-+                LOG_INFO(Config, "Loaded per-game overrides from {}", game_loc);
-+            }
-+        }
-+    }
-+
++    android_config = std::move(merged_config);
++    LOG_INFO(Config, "Loaded per-game overrides from {}", game_loc);
 +    Reload();
 +}
 +
