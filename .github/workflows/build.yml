@@ -57,7 +57,7 @@ jobs:
           path: |
             .gradle-cache/caches
             .gradle-cache/wrapper
-          key: koji-gradle-${{ runner.os }}-${{ hashFiles('azahar-custom.patch', 'koji-branding.sh') }}
+          key: koji-gradle-${{ runner.os }}-jdk17
           restore-keys: |
             koji-gradle-${{ runner.os }}-
 
