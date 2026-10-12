@@ -1,18 +1,53 @@
-name: Build patched Azahar APK
+name: Build Kojii APK
 
 on:
+  push:
+    branches:
+      - koji-features-v2
   workflow_dispatch:
     inputs:
       tag:
         description: "Azahar release tag to build (blank = newest release)"
         required: false
         default: ""
+      abis:
+        description: "Comma-separated ABIs to build (blank = arm64-v8a). Use arm64-v8a,x86_64 for emulators."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: koji-apk-${{ github.ref }}-${{ inputs.tag }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_MAXSIZE: 5G
+      CCACHE_COMPILERCHECK: content
+      CCACHE_BASEDIR: ${{ github.workspace }}/azahar
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-cache
+      CMAKE_BUILD_PARALLEL_LEVEL: 4
+      MAKEFLAGS: -j4
+      JAVA_TOOL_OPTIONS: -XX:ActiveProcessorCount=4
+      # Native compilation dominates the build, so only the ABI(s) we actually ship are
+      # compiled. Blank/arm64-v8a builds the phone APK; arm64-v8a,x86_64 restores the
+      # universal APK used for emulators (at roughly double the native build cost).
+      KOJI_ABIS: ${{ inputs.abis }}
+      # Keep Gradle's JVM heap large enough to avoid memory pressure during Kotlin/native builds.
+      GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g\ -XX:MaxMetaspaceSize=1g\ -Dfile.encoding=UTF-8
+      # Release signing material lives outside the repository: the provisioned key is cached as
+      # .signing (ignored by git) and the private env file in a temporary runner directory.
+      # KOJII_SIGNING_ENV is set per step: the runner context is not available in job-level env.
+      KOJII_SIGNING_DIR: ${{ github.workspace }}/.signing
+
     steps:
-      - name: Checkout this repo (contains azahar-custom.patch)
+      - name: Checkout Kojii builder
         uses: actions/checkout@v4
 
       - name: Find Azahar version
@@ -20,44 +55,261 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${{ github.event.inputs.tag }}"
+          TAG="${{ inputs.tag }}"
           if [ -z "$TAG" ]; then
             TAG=$(gh api repos/azahar-emu/azahar/releases/latest --jq .tag_name)
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Building Azahar $TAG"
+          echo "Building Kojii from Azahar $TAG"
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # The provisioned key is fetched before the identity is selected so that a key created by
+      # an earlier run is reused instead of replaced.
+      - name: Restore provisioned signing identity
+        uses: actions/cache/restore@v4
+        with:
+          path: .signing
+          key: koji-provisioned-signing-v1
+
+      - name: Select APK signing identity
+        id: signing
+        env:
+          KOJII_SIGNING_ENV: ${{ runner.temp }}/signing.env
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/kojii-release.p12
+        run: bash tools/prepare_signing.sh
+
+      - name: Provision signing identity
+        if: steps.signing.outputs.mode == 'generate'
+        run: bash tools/generate_signing_key.sh
+        env:
+          KOJII_SIGNING_ENV: ${{ runner.temp }}/signing.env
+
+      # Persist the new identity before the long native build: a later run restores it and signs
+      # with exactly the same key. continue-on-error keeps a cache hiccup from discarding a
+      # finished APK, but a warning here means the next run would provision a different identity,
+      # so promote the uploaded key to repository secrets instead.
+      - name: Save provisioned signing identity
+        if: steps.signing.outputs.mode == 'generate'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: .signing
+          key: koji-provisioned-signing-v1
+
+      # Read access to the repository is required to download this artifact, so the key is not
+      # published; it exists so the identity can be promoted to repository secrets.
+      - name: Upload provisioned signing identity
+        if: steps.signing.outputs.mode == 'generate'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kojii-signing-key
+          path: |
+            .signing/provisioned.p12
+            .signing/provisioned.pass
+            .signing/alias
+            .signing/keystore.b64
+            .signing/PROMOTE-TO-SECRETS.txt
+          retention-days: 7
+          if-no-files-found: error
+
+      # Cache keys are content-addressed (tag + patch/branding hash) instead of per-run.
+      # A unique key per run would write a fresh multi-gigabyte entry on every build and
+      # push older entries out of the repository's 10 GB cache budget, which evicts the
+      # very caches that make repeat builds fast.
+      - name: Restore Gradle dependency and build caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            .gradle-cache/caches
+            .gradle-cache/wrapper
+          key: koji-gradle-${{ runner.os }}-jdk17-${{ steps.ver.outputs.tag }}
+          restore-keys: |
+            koji-gradle-${{ runner.os }}-jdk17-
+            koji-gradle-${{ runner.os }}-
+
+      - name: Restore Android CMake package
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/cmake/3.30.3
+          key: koji-cmake-${{ runner.os }}-3.30.3
+
+      - name: Restore native compiler cache
+        uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: koji-ccache-${{ runner.os }}-${{ steps.ver.outputs.tag }}-${{ hashFiles('azahar-custom.patch', 'koji-branding.sh', 'assets/kojii-icon.svg', 'tools/render_icons.py') }}
+          restore-keys: |
+            koji-ccache-${{ runner.os }}-${{ steps.ver.outputs.tag }}-
+            koji-ccache-${{ runner.os }}-
 
       - name: Download Azahar source (with submodules)
-        run: git clone --recursive --depth 1 --branch "${{ steps.ver.outputs.tag }}" https://github.com/azahar-emu/azahar azahar
+        run: git clone --recursive --depth 1 --shallow-submodules --branch "${{ steps.ver.outputs.tag }}" https://github.com/azahar-emu/azahar azahar
 
-      - name: Apply patch
+      - name: Validate Kojii emulator patch
         working-directory: azahar
         run: |
-          patch -p1 --no-backup-if-mismatch < ../azahar-custom.patch
+          set -euo pipefail
+          patch --dry-run --batch -p1 < ../azahar-custom.patch
+
+      - name: Apply Kojii emulator patch
+        working-directory: azahar
+        run: |
+          set -euo pipefail
+          patch --batch -p1 --no-backup-if-mismatch < ../azahar-custom.patch
           if find . -name '*.rej' | grep -q .; then
-            echo "::error::Patch does not apply cleanly to ${{ steps.ver.outputs.tag }}. Re-run with tag 2126.2 or ask for an updated patch."
+            echo "::error::Patch does not apply cleanly to ${{ steps.ver.outputs.tag }}. Choose a compatible tag or update the patch."
             find . -name '*.rej'
             exit 1
           fi
 
-      - name: Install tools
+      - name: Install optional icon renderer
+        if: hashFiles('assets/kojii-icon.svg') != ''
         run: |
           sudo apt-get update -y
-          sudo apt-get install ccache apksigner -y
-          echo "y" | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager "cmake;3.30.3"
+          sudo apt-get install -y --no-install-recommends libcairo2
+          python3 -m pip install -r tools/icon-requirements.txt
+
+      - name: Apply Kojii branding and game library
+        run: |
+          chmod +x koji-branding.sh
+          ./koji-branding.sh
+
+      - name: Restore native build intermediates
+        uses: actions/cache@v4
+        with:
+          path: |
+            azahar/src/android/.cxx
+            azahar/src/android/app/.cxx
+            azahar/src/android/app/build/intermediates/cxx
+          key: koji-native-${{ runner.os }}-${{ steps.ver.outputs.tag }}-${{ hashFiles('azahar-custom.patch', 'koji-branding.sh', 'assets/kojii-icon.svg', 'tools/render_icons.py') }}
+          restore-keys: |
+            koji-native-${{ runner.os }}-${{ steps.ver.outputs.tag }}-
+
+      - name: Install build tools
+        run: |
+          if ! command -v ccache >/dev/null 2>&1 || ! command -v apksigner >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y --no-install-recommends ccache apksigner
+          fi
+          if [ ! -x "${ANDROID_SDK_ROOT}/cmake/3.30.3/bin/cmake" ]; then
+            echo "Installing Android CMake 3.30.3"
+            echo "y" | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" "cmake;3.30.3"
+          fi
+          ccache --zero-stats
+          ccache --show-stats
 
       - name: Build APK
         working-directory: azahar
         env:
-          JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
+          NDK_CCACHE: /usr/bin/ccache
+          KOJII_SIGNING_ENV: ${{ runner.temp }}/signing.env
         run: |
-          export NDK_CCACHE=$(which ccache)
+          set -euo pipefail
+          set -a
+          # shellcheck disable=SC1090
+          . "$KOJII_SIGNING_ENV"
+          set +a
           cd src/android
           chmod +x ./gradlew
-          ./gradlew assembleVanillaRelease
+          set -o pipefail
+          ./gradlew --build-cache --parallel --max-workers=4 assembleVanillaRelease 2>&1 \
+            | tee "$GITHUB_WORKSPACE/koji-build.log"
+
+      # Build logs need a signed-in repository admin to view, so on failure the interesting part of
+      # the Gradle output is republished where anyone can read it: as an annotation and in the run
+      # summary. This makes a red run diagnosable without repository access.
+      - name: Publish build log on failure
+        if: failure()
+        run: |
+          LOG="$GITHUB_WORKSPACE/koji-build.log"
+          if [ ! -f "$LOG" ]; then
+            echo "No build log was captured."
+            exit 0
+          fi
+          SNIP=$(grep -n -i -E '^e: |^w: .*(error)|error:|FAILURE:|What went wrong|Caused by:|Execution failed|not found' "$LOG" | head -40 || true)
+          if [ -z "$SNIP" ]; then
+            SNIP=$(tail -40 "$LOG")
+          fi
+          ESCAPED=$(printf '%s' "$SNIP" | head -c 6000 | sed ':a;N;$!ba;s/\n/%0A/g')
+          echo "::error title=Gradle build failure::${ESCAPED}"
+          {
+            echo "### Kojii build log (last 300 lines)"
+            echo '```'
+            tail -300 "$LOG"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Show compiler cache statistics
+        if: always()
+        run: |
+          if command -v ccache >/dev/null 2>&1; then
+            ccache --show-stats
+          else
+            echo "ccache was not installed; no compiler-cache statistics available."
+          fi
+
+      # Every build is signed, so this always runs: an unsigned APK cannot be installed at all.
+      - name: Verify APK signer
+        run: |
+          set -euo pipefail
+          APK_DIR="azahar/src/android/app/build/outputs/apk/vanilla/release"
+          shopt -s nullglob
+          apks=("$APK_DIR"/*.apk)
+          if [ "${#apks[@]}" -eq 0 ]; then
+            echo "::error title=No APK produced::No release APK was found in $APK_DIR"
+            exit 1
+          fi
+          for apk in "${apks[@]}"; do
+            apksigner verify --verbose --print-certs "$apk" | tee "${apk%.apk}-signer.txt"
+          done
+
+      - name: Verify package metadata and report signing identity
+        env:
+          SIGNING_SOURCE: ${{ steps.signing.outputs.mode }}
+        run: |
+          python3 - <<'PYMETA'
+          import json
+          import os
+          from pathlib import Path
+          metadata = json.loads(Path("azahar/src/android/app/build/outputs/apk/vanilla/release/output-metadata.json").read_text())
+          assert metadata["applicationId"] == "org.azahar_emu.azahar", "Package identity changed; updates would break"
+          assert all(e["versionCode"] > 0 for e in metadata["elements"])
+          source = os.environ["SIGNING_SOURCE"]
+          assert source in ("secrets", "cached", "generate"), f"Unexpected signing source {source!r}"
+          for element in metadata["elements"]:
+              assert not element["outputFile"].endswith("-unsigned.apk"), "Unsigned APKs are not installable; the build must always be signed"
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write(f"### Kojii APK: signed ({source})\n")
+              if source == "secrets":
+                  summary.write("Signed with the signing identity from repository secrets. It updates an install signed with the same key.\n")
+              elif source == "cached":
+                  summary.write("Signed with the provisioned CI identity reused from the Actions cache, so it updates an install of the previous run.\n")
+              else:
+                  summary.write("This run provisioned a new signing identity. The APK installs as a fresh app; promote the `kojii-signing-key` artifact to repository secrets so later builds update it instead of replacing it.\n")
+          print(f"Package identity, version codes and signed output verified ({source})")
+          PYMETA
+
+      - name: Remove temporary signing material
+        if: always()
+        env:
+          KOJII_SIGNING_ENV: ${{ runner.temp }}/signing.env
+        run: rm -f "$RUNNER_TEMP/kojii-release.p12" "$KOJII_SIGNING_ENV"
 
       - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: azahar-patched-${{ steps.ver.outputs.tag }}
-          path: azahar/src/android/app/build/outputs/apk/vanilla/release/*.apk
+          name: kojii-${{ steps.ver.outputs.tag }}
+          path: |
+            azahar/src/android/app/build/outputs/apk/vanilla/release/*.apk
+            azahar/src/android/app/build/outputs/apk/vanilla/release/*-signer.txt
+          if-no-files-found: error
+          retention-days: 14
