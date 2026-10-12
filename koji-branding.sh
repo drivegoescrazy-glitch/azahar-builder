@@ -70,7 +70,7 @@ s = layout.read_text()
 # carousel item stretch across the screen and produces the oversized, awkward cards.
 s, count = re.subn(
     r'(<com\.google\.android\.material\.card\.MaterialCardView[^>]*?android:layout_width=")match_parent(")',
-    r'\\g<1>190dp\\g<2>',
+    r'\g<1>190dp\g<2>',
     s,
     count=1,
     flags=re.DOTALL,
