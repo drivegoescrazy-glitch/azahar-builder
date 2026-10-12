@@ -14,19 +14,35 @@ import re
 root = Path("azahar/src/android/app/src/main")
 manifest = root / "AndroidManifest.xml"
 s = manifest.read_text()
-s = s.replace('android:icon="@mipmap/ic_launcher"', 'android:icon="@drawable/koji_icon"')
 s = s.replace('android:banner="@mipmap/ic_launcher"', 'android:banner="@drawable/koji_icon"')
-s = s.replace('android:roundIcon="@mipmap/ic_launcher_round"', 'android:roundIcon="@drawable/koji_icon"')
+s = s.replace('android:roundIcon="@mipmap/ic_launcher_round"', 'android:roundIcon="@mipmap/ic_launcher"')
+if 'android:roundIcon=' not in s:
+    s = s.replace('android:icon="@mipmap/ic_launcher"',
+                  'android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"')
 manifest.write_text(s)
 
-# Rebrand visible UI copy while retaining Azahar project URLs and upstream attribution.
-for file in (root / "res/values").glob("strings*.xml"):
-    s = file.read_text()
-    s = re.sub(r'(?i)\bAzahar\b', 'Koji', s)
-    s = re.sub(r'(?i)\bAzahar\'s\b', "Koji's", s)
-    # Keep upstream links and project identifiers intact.
-    s = s.replace('https://github.com/azahar-emu/azahar', 'https://github.com/azahar-emu/azahar')
-    file.write_text(s)
+# Rebrand every locale without changing working links, resource IDs, or attribution.
+from xml.etree import ElementTree as ET
+
+def rebrand_text(text):
+    # Preserve URLs (including escaped/HTML forms) rather than inventing nonexistent Kojii URLs.
+    return re.sub(r'https?://[^\s<>\"]+|\b(?:azahar|koji)\b',
+                  lambda m: m[0] if m[0].startswith(('http://', 'https://')) else 'Kojii',
+                  text, flags=re.IGNORECASE)
+
+for directory in (root / "res").glob("values*"):
+    for file in directory.glob("*.xml"):
+        original = file.read_text()
+        # Only string/plural/array contents are visible text, never resource/style names.
+        tree = ET.fromstring(original)
+        names = {el.get('name') for el in tree
+                 if el.tag in ('string', 'plurals', 'string-array')}
+        pattern = re.compile(r'(<(string|plurals|string-array)\b[^>]*name="([^"]+)"[^>]*>)(.*?)(</\2>)', re.S)
+        def replace_copy(match):
+            if match[3] not in names or match[3].endswith(('_link', '_url', '_id')):
+                return match[0]
+            return match[1] + rebrand_text(match[4]) + match[5]
+        file.write_text(pattern.sub(replace_copy, original))
 
 icon = root / "res/drawable/koji_icon.xml"
 icon.write_text("""<?xml version="1.0" encoding="utf-8"?>
@@ -45,65 +61,45 @@ icon.write_text("""<?xml version="1.0" encoding="utf-8"?>
 </vector>
 """)
 
-# Turn the main library into a horizontal, swipeable card carousel.
-fragment = root / "java/org/citra/citra_emu/fragments/GamesFragment.kt"
-s = fragment.read_text()
-s = s.replace("import androidx.recyclerview.widget.GridLayoutManager", "import androidx.recyclerview.widget.LinearLayoutManager")
-pattern = re.compile(
-    r"layoutManager = GridLayoutManager\(\s*requireContext\(\),\s*resources\.getInteger\(R\.integer\.game_grid_columns\)\s*\)",
-    re.MULTILINE,
-)
-replacement = """layoutManager = LinearLayoutManager(
-                requireContext(),
-                androidx.recyclerview.widget.RecyclerView.HORIZONTAL,
-                false
-            )"""
-s, count = pattern.subn(replacement, s, count=1)
-if count != 1:
-    raise SystemExit("Could not safely locate the main games grid layout; refusing to build a partial UI change.")
-fragment.write_text(s)
+# Responsive, vertically scrollable library/search grids. Span count follows the actual
+# RecyclerView width (including split screen and tablets), not whole-screen orientation.
+for fragment_name, binding_name in (("GamesFragment", "gridGames"), ("SearchFragment", "gridGamesSearch")):
+    fragment = root / f"java/org/citra/citra_emu/fragments/{fragment_name}.kt"
+    text = fragment.read_text()
+    anchor = f"        binding.{binding_name}.apply {{"
+    injection = anchor + """
+            addOnLayoutChangeListener { view, left, _, right, _, _, _, _, _ ->
+                val available = right - left - view.paddingLeft - view.paddingRight
+                val minTile = (resources.displayMetrics.density * 156).toInt().coerceAtLeast(1)
+                val columns = (available / minTile).coerceIn(2, 8)
+                val grid = layoutManager as? GridLayoutManager
+                if (grid != null && grid.spanCount != columns) grid.spanCount = columns
+            }
+            itemAnimator = null
+"""
+    if text.count(anchor) != 1:
+        raise SystemExit(f"Missing library grid anchor in {fragment_name}")
+    text = text.replace(anchor, injection, 1)
+    text = text.replace("resources.getInteger(R.integer.game_grid_columns)", "2", 1)
+    fragment.write_text(text)
 
-# Give each horizontal carousel card a stable width. Keep the upstream 8dp spacing.
 layout = root / "res/layout/card_game.xml"
-s = layout.read_text()
-# The root card width must be fixed for a horizontal RecyclerView; match_parent makes each
-# carousel item stretch across the screen and produces the oversized, awkward cards.
-s, count = re.subn(
-    r'(<com\.google\.android\.material\.card\.MaterialCardView[^>]*?android:layout_width=")match_parent(")',
-    r'\g<1>190dp\g<2>',
-    s,
-    count=1,
-    flags=re.DOTALL,
-)
-if count != 1:
-    raise SystemExit("Could not locate root game-card width; refusing to produce a broken carousel.")
-s = s.replace('android:layout_margin="6dp"', 'android:layout_margin="8dp"', 1)
-layout.write_text(s)
+text = layout.read_text().replace('android:textColor="#F5F7FA"', 'android:textColor="?attr/colorOnSurface"')
+text = text.replace('TextAppearance.Material3.LabelSmall', 'TextAppearance.Material3.TitleSmall')
+text = text.replace('android:padding="4dp"', 'android:padding="10dp"')
+text = text.replace('app:cardBackgroundColor="@android:color/transparent"',
+                    'app:cardBackgroundColor="?attr/colorSurfaceVariant"')
+text = text.replace('app:strokeWidth="0dp"', 'app:strokeWidth="1dp" app:strokeColor="?attr/colorOutline"')
+text = text.replace('android:maxLines="2"', 'android:maxLines="2" android:minLines="2"')
+layout.write_text(text)
 
-# Keep search results in the same horizontal carousel style as the main library.
-search_fragment = root / "java/org/citra/citra_emu/fragments/SearchFragment.kt"
-s = search_fragment.read_text()
-s = s.replace("import androidx.recyclerview.widget.GridLayoutManager", "import androidx.recyclerview.widget.LinearLayoutManager")
-pattern = re.compile(
-    r"layoutManager = GridLayoutManager\(\s*requireContext\(\),\s*resources\.getInteger\(R\.integer\.game_grid_columns\)\s*\)",
-    re.MULTILINE,
-)
-replacement = """layoutManager = LinearLayoutManager(
-                requireContext(),
-                androidx.recyclerview.widget.RecyclerView.HORIZONTAL,
-                false
-            )"""
-s, count = pattern.subn(replacement, s, count=1)
-if count != 1:
-    raise SystemExit("Could not safely locate search results layout.")
-search_fragment.write_text(s)
 PY
 
 # ---------------------------------------------------------------------------
-# Koji visual identity
+# Kojii visual identity
 #
 # Azahar ships a stock Material 3 look: a blue accent, lightly rounded stock
-# components and dense, flat settings lists. Koji replaces that with its own
+# components and dense, flat settings lists. Kojii replaces that with its own
 # design language - a warm orange accent on charcoal/paper surfaces, generous
 # rounding, accent rails and "console tile" menus. Only appearance is touched:
 # every screen, preference, id and navigation path stays exactly as it was, so
@@ -124,11 +120,11 @@ def write(path, text):
     path.write_text(text)
 
 # ---------------------------------------------------------------------------
-# 1. Koji colour palette
+# 1. Kojii colour palette
 #
 # Every Azahar theme keeps its own accent hue, but all surface/background
-# colours are normalised to the Koji neutrals and the default (Blue) theme
-# becomes the Koji orange accent. Resource names are untouched, so the theme
+# colours are normalised to the Kojii neutrals and the default (Blue) theme
+# becomes the Kojii orange accent. Resource names are untouched, so the theme
 # picker and every R.color.* reference keep working.
 # ---------------------------------------------------------------------------
 NEUTRAL = {
@@ -181,7 +177,7 @@ def apply_koji_palette(path, mode):
     text, count = COLOR_RE.subn(repl, text)
     if count < 200:
         raise SystemExit(
-            "Unexpected Koji colour palette in {} (matched {} entries).".format(path, count)
+            "Unexpected Kojii colour palette in {} (matched {} entries).".format(path, count)
         )
     path.write_text(text)
 
@@ -189,30 +185,30 @@ apply_koji_palette(res / "values/citra_colors.xml", "light")
 apply_koji_palette(res / "values-night/citra_colors.xml", "night")
 
 # ---------------------------------------------------------------------------
-# 2. Koji shape language, panels and navigation bar styles
+# 2. Kojii shape language, panels and navigation bar styles
 # ---------------------------------------------------------------------------
 styles = res / "values/styles.xml"
 text = styles.read_text()
-if "ShapeAppearance.Koji.Medium" in text:
-    raise SystemExit("Koji styles are already present; refusing to duplicate them.")
+if "ShapeAppearance.Kojii.Medium" in text:
+    raise SystemExit("Kojii styles are already present; refusing to duplicate them.")
 koji_styles = '''
-    <!-- Koji shape language: generous, softly rounded surfaces. -->
-    <style name="ShapeAppearance.Koji.ExtraSmall" parent="">
+    <!-- Kojii shape language: generous, softly rounded surfaces. -->
+    <style name="ShapeAppearance.Kojii.ExtraSmall" parent="">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">10dp</item>
     </style>
-    <style name="ShapeAppearance.Koji.Small" parent="ShapeAppearance.Koji.ExtraSmall">
+    <style name="ShapeAppearance.Kojii.Small" parent="ShapeAppearance.Kojii.ExtraSmall">
         <item name="cornerSize">14dp</item>
     </style>
-    <style name="ShapeAppearance.Koji.Medium" parent="ShapeAppearance.Koji.ExtraSmall">
+    <style name="ShapeAppearance.Kojii.Medium" parent="ShapeAppearance.Kojii.ExtraSmall">
         <item name="cornerSize">20dp</item>
     </style>
-    <style name="ShapeAppearance.Koji.Large" parent="ShapeAppearance.Koji.ExtraSmall">
+    <style name="ShapeAppearance.Kojii.Large" parent="ShapeAppearance.Kojii.ExtraSmall">
         <item name="cornerSize">28dp</item>
     </style>
 
-    <!-- Koji panel: the container used by every menu card. -->
-    <style name="Widget.Koji.Panel" parent="Widget.Material3.CardView.Outlined">
+    <!-- Kojii panel: the container used by every menu card. -->
+    <style name="Widget.Kojii.Panel" parent="Widget.Material3.CardView.Outlined">
         <item name="cardCornerRadius">22dp</item>
         <item name="cardElevation">0dp</item>
         <item name="strokeColor">?attr/colorOutline</item>
@@ -221,8 +217,8 @@ koji_styles = '''
         <item name="rippleColor">?attr/colorControlHighlight</item>
     </style>
 
-    <!-- Koji bottom navigation bar -->
-    <style name="Widget.Koji.NavigationBar" parent="Widget.Material3.BottomNavigationView">
+    <!-- Kojii bottom navigation bar -->
+    <style name="Widget.Kojii.NavigationBar" parent="Widget.Material3.BottomNavigationView">
         <item name="android:background">@drawable/koji_nav_background</item>
         <item name="itemIconTint">@color/koji_navigation_tint</item>
         <item name="itemTextColor">@color/koji_navigation_tint</item>
@@ -231,23 +227,23 @@ koji_styles = '''
 styles.write_text(text.replace("</resources>", koji_styles, 1))
 
 # ---------------------------------------------------------------------------
-# 3. Wire the Koji shapes and navigation bar into the base theme
+# 3. Wire the Kojii shapes and navigation bar into the base theme
 # ---------------------------------------------------------------------------
 themes = res / "values/themes.xml"
 text = themes.read_text()
 anchor = '        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>'
 if anchor not in text:
-    raise SystemExit("Could not find the base Koji theme anchor; refusing a partial restyle.")
+    raise SystemExit("Could not find the base Kojii theme anchor; refusing a partial restyle.")
 injection = anchor + '''
-        <!-- Koji: rounded, non-flat Material 3 surfaces for every menu. -->
-        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.Koji.Small</item>
-        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.Koji.Medium</item>
-        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.Koji.Large</item>
-        <item name="bottomNavigationStyle">@style/Widget.Koji.NavigationBar</item>'''
+        <!-- Kojii: rounded, non-flat Material 3 surfaces for every menu. -->
+        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.Kojii.Small</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.Kojii.Medium</item>
+        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.Kojii.Large</item>
+        <item name="bottomNavigationStyle">@style/Widget.Kojii.NavigationBar</item>'''
 themes.write_text(text.replace(anchor, injection, 1))
 
 # ---------------------------------------------------------------------------
-# 4. Koji drawables and colour state lists
+# 4. Kojii drawables and colour state lists
 # ---------------------------------------------------------------------------
 write(res / "drawable/koji_accent_rail.xml", PY_HEADER + '''<shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
@@ -317,13 +313,13 @@ write(res / "color/koji_navigation_tint.xml", PY_HEADER + '''<selector xmlns:and
 ''')
 
 # ---------------------------------------------------------------------------
-# 5. Koji menus: option tiles, settings rows, headers and containers
+# 5. Kojii menus: option tiles, settings rows, headers and containers
 # ---------------------------------------------------------------------------
-write(res / "layout/card_home_option.xml", PY_HEADER + '''<!-- Koji option tile: a rounded panel with an accent rail and a tinted icon disc. -->
+write(res / "layout/card_home_option.xml", PY_HEADER + '''<!-- Kojii option tile: a rounded panel with an accent rail and a tinted icon disc. -->
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    style="@style/Widget.Koji.Panel"
+    style="@style/Widget.Kojii.Panel"
     android:id="@+id/option_card"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -595,7 +591,7 @@ write(res / "layout/list_item_settings_header.xml", PY_HEADER + '''<LinearLayout
 ''')
 
 # ---------------------------------------------------------------------------
-# 6. Koji screens: home options hero, main navigation bar and settings list
+# 6. Kojii screens: home options hero, main navigation bar and settings list
 # ---------------------------------------------------------------------------
 write(res / "layout/fragment_home_settings.xml", PY_HEADER + '''<androidx.core.widget.NestedScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -721,7 +717,7 @@ write(res / "layout/header_in_game.xml", PY_HEADER + '''<LinearLayout xmlns:andr
 ''')
 
 # ---------------------------------------------------------------------------
-# 7. Activity layouts: rounded Koji navigation bar and settings background
+# 7. Activity layouts: rounded Kojii navigation bar and settings background
 # ---------------------------------------------------------------------------
 main_layout = res / "layout/activity_main.xml"
 text = main_layout.read_text()
@@ -747,7 +743,7 @@ new_nav = '''        android:background="@drawable/koji_nav_background"
         app:menu="@menu/menu_navigation"
         app:labelVisibilityMode="selected"'''
 if old_nav not in text:
-    raise SystemExit("Could not locate the Koji navigation bar attributes.")
+    raise SystemExit("Could not locate the Kojii navigation bar attributes.")
 text = text.replace(old_nav, new_nav, 1)
 main_layout.write_text(text)
 
@@ -758,7 +754,7 @@ if rail_layout.exists():
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"'''
     if rail_anchor not in text:
-        raise SystemExit("Could not locate the Koji navigation rail attributes.")
+        raise SystemExit("Could not locate the Kojii navigation rail attributes.")
     text = text.replace(
         rail_anchor,
         '''        android:background="@drawable/koji_rail_background"
@@ -777,7 +773,7 @@ text = text.replace('android:background="?attr/colorSurface"',
 settings_layout.write_text(text)
 
 # ---------------------------------------------------------------------------
-# 8. Koji tagline string used by the options hero
+# 8. Kojii tagline string used by the options hero
 # ---------------------------------------------------------------------------
 strings = res / "values/strings.xml"
 text = strings.read_text()
@@ -789,5 +785,38 @@ if "koji_home_tagline" not in text:
     )
     strings.write_text(text)
 
-print("Koji UI identity applied.")
+print("Kojii UI identity applied.")
 PY
+
+# The launcher keeps adaptive masking/themed-icon support. All legacy app logos point at the
+# same source; game covers and functional menu/controller symbols remain distinct.
+python3 - <<'PYICONS'
+from pathlib import Path
+root = Path("azahar/src/android/app/src/main")
+res = root / "res"
+for file in list(res.rglob("*.xml")) + [root / "AndroidManifest.xml"]:
+    text = file.read_text()
+    for old in ("ic_citra_full", "ic_citra", "ic_citra_monochrome"):
+        text = text.replace("@drawable/" + old + '"', '@drawable/koji_icon"')
+    file.write_text(text)
+# Preserve the old dedicated monochrome glyph in fallback mode.
+adaptive = res / "mipmap-anydpi-v26/ic_launcher.xml"
+text = adaptive.read_text().replace('<monochrome android:drawable="@drawable/koji_icon"',
+                                    '<monochrome android:drawable="@drawable/ic_citra_monochrome"')
+adaptive.write_text(text)
+PYICONS
+
+if [ -f "assets/kojii-icon.svg" ]; then
+    python3 tools/render_icons.py assets/kojii-icon.svg "$ROOT/res"
+else
+    echo "WARNING: assets/kojii-icon.svg is missing; using the previous icon until the artwork is supplied." >&2
+fi
+
+# Kotlin setup screens also refer to these legacy resource IDs. Replace their artwork, not the
+# IDs, so bindings and navigation remain compatible.
+python3 - <<'PYALIASES'
+from pathlib import Path
+res = Path("azahar/src/android/app/src/main/res")
+for name in ("ic_citra_full", "ic_citra"):
+    (res / f"drawable/{name}.xml").write_bytes((res / "drawable/koji_icon.xml").read_bytes())
+PYALIASES

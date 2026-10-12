@@ -1,4 +1,4 @@
-name: Build Koji APK
+name: Build Kojii APK
 
 on:
   push:
@@ -43,7 +43,7 @@ jobs:
       GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g\ -XX:MaxMetaspaceSize=1g\ -Dfile.encoding=UTF-8
 
     steps:
-      - name: Checkout Koji builder
+      - name: Checkout Kojii builder
         uses: actions/checkout@v4
 
       - name: Find Azahar version
@@ -56,13 +56,21 @@ jobs:
             TAG=$(gh api repos/azahar-emu/azahar/releases/latest --jq .tag_name)
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Building Koji from Azahar $TAG"
+          echo "Building Kojii from Azahar $TAG"
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
+      - name: Validate persistent release signing identity
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/kojii-release.jks
+        run: bash tools/prepare_signing.sh
 
       # Cache keys are content-addressed (tag + patch/branding hash) instead of per-run.
       # A unique key per run would write a fresh multi-gigabyte entry on every build and
@@ -89,7 +97,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .ccache
-          key: koji-ccache-${{ runner.os }}-${{ steps.ver.outputs.tag }}-${{ hashFiles('azahar-custom.patch', 'koji-branding.sh') }}
+          key: koji-ccache-${{ runner.os }}-${{ steps.ver.outputs.tag }}-${{ hashFiles('azahar-custom.patch', 'koji-branding.sh', 'assets/kojii-icon.svg', 'tools/render_icons.py') }}
           restore-keys: |
             koji-ccache-${{ runner.os }}-${{ steps.ver.outputs.tag }}-
             koji-ccache-${{ runner.os }}-
@@ -97,13 +105,13 @@ jobs:
       - name: Download Azahar source (with submodules)
         run: git clone --recursive --depth 1 --shallow-submodules --branch "${{ steps.ver.outputs.tag }}" https://github.com/azahar-emu/azahar azahar
 
-      - name: Validate Koji emulator patch
+      - name: Validate Kojii emulator patch
         working-directory: azahar
         run: |
           set -euo pipefail
           patch --dry-run --batch -p1 < ../azahar-custom.patch
 
-      - name: Apply Koji emulator patch
+      - name: Apply Kojii emulator patch
         working-directory: azahar
         run: |
           set -euo pipefail
@@ -114,7 +122,14 @@ jobs:
             exit 1
           fi
 
-      - name: Apply Koji branding and carousel UI
+      - name: Install optional icon renderer
+        if: hashFiles('assets/kojii-icon.svg') != ''
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends libcairo2
+          python3 -m pip install -r tools/icon-requirements.txt
+
+      - name: Apply Kojii branding and game library
         run: |
           chmod +x koji-branding.sh
           ./koji-branding.sh
@@ -126,7 +141,7 @@ jobs:
             azahar/src/android/.cxx
             azahar/src/android/app/.cxx
             azahar/src/android/app/build/intermediates/cxx
-          key: koji-native-${{ runner.os }}-${{ steps.ver.outputs.tag }}-${{ hashFiles('azahar-custom.patch', 'koji-branding.sh') }}
+          key: koji-native-${{ runner.os }}-${{ steps.ver.outputs.tag }}-${{ hashFiles('azahar-custom.patch', 'koji-branding.sh', 'assets/kojii-icon.svg', 'tools/render_icons.py') }}
           restore-keys: |
             koji-native-${{ runner.os }}-${{ steps.ver.outputs.tag }}-
 
@@ -147,6 +162,9 @@ jobs:
         working-directory: azahar
         env:
           NDK_CCACHE: /usr/bin/ccache
+          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/kojii-release.jks
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
           cd src/android
           chmod +x ./gradlew
@@ -172,7 +190,7 @@ jobs:
           ESCAPED=$(printf '%s' "$SNIP" | head -c 6000 | sed ':a;N;$!ba;s/\n/%0A/g')
           echo "::error title=Gradle build failure::${ESCAPED}"
           {
-            echo "### Koji build log (last 300 lines)"
+            echo "### Kojii build log (last 300 lines)"
             echo '```'
             tail -300 "$LOG"
             echo '```'
@@ -187,11 +205,33 @@ jobs:
             echo "ccache was not installed; no compiler-cache statistics available."
           fi
 
+      - name: Verify APK signer and package metadata
+        run: |
+          set -euo pipefail
+          APK_DIR="azahar/src/android/app/build/outputs/apk/vanilla/release"
+          for apk in "$APK_DIR"/*.apk; do
+            apksigner verify --verbose --print-certs "$apk" | tee "${apk%.apk}-signer.txt"
+          done
+          python3 - <<'PYMETA'
+          import json
+          from pathlib import Path
+          metadata = json.loads(Path("azahar/src/android/app/build/outputs/apk/vanilla/release/output-metadata.json").read_text())
+          assert metadata["applicationId"] == "org.azahar_emu.azahar", "Package identity changed; updates would break"
+          assert all(e["versionCode"] > 0 for e in metadata["elements"])
+          print("Update package identity and version codes verified")
+          PYMETA
+
+      - name: Remove temporary signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/kojii-release.jks"
+
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: koji-${{ steps.ver.outputs.tag }}
-          path: azahar/src/android/app/build/outputs/apk/vanilla/release/*.apk
+          name: kojii-${{ steps.ver.outputs.tag }}
+          path: |
+            azahar/src/android/app/build/outputs/apk/vanilla/release/*.apk
+            azahar/src/android/app/build/outputs/apk/vanilla/release/*-signer.txt
           if-no-files-found: error
           retention-days: 14

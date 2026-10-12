@@ -1,0 +1,6 @@
+.work/
+__pycache__/
+*.jks
+*.keystore
+*.p12
+*.env
