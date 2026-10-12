@@ -28,7 +28,7 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/adapters/GameAdapt
  import com.google.android.material.dialog.MaterialAlertDialogBuilder
  import kotlinx.coroutines.CoroutineScope
  import kotlinx.coroutines.Dispatchers
-@@ -53,6 +51,7 @@
+@@ -53,6 +51,8 @@
  import org.citra.citra_emu.databinding.CardGameBinding
  import org.citra.citra_emu.databinding.DialogShortcutBinding
  import org.citra.citra_emu.features.cheats.ui.CheatsFragmentDirections
@@ -976,7 +976,6 @@ diff -ruN a/src/core/file_sys/ncch_container.cpp b/src/core/file_sys/ncch_contai
      if (!is_proto && use_layered_fs &&
          (FileUtil::Exists(path + "romfs/") || FileUtil::Exists(path + "romfs_ext/"))) {
  
-
 diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt
 --- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt
 +++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/model/Settings.kt
@@ -988,7 +987,6 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 +            SettingsFile.saveCustomGameSettings(gameId!!, sections, view)
          }
      }
-
 diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
 --- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
 +++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
@@ -1042,7 +1040,6 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 +            ?: customDirectory.createFile("text/plain", "$gameId.ini")
 +            ?: throw IOException("Unable to create per-game settings file")
      }
-
 diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/SettingsFragmentPresenter.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/SettingsFragmentPresenter.kt
 --- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/SettingsFragmentPresenter.kt
 +++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/ui/SettingsFragmentPresenter.kt
