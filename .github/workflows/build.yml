@@ -1,6 +1,9 @@
 name: Build Koji APK
 
 on:
+  push:
+    branches:
+      - koji-features-v2
   workflow_dispatch:
     inputs:
       tag:
@@ -79,10 +82,17 @@ jobs:
       - name: Download Azahar source (with submodules)
         run: git clone --recursive --depth 1 --shallow-submodules --branch "${{ steps.ver.outputs.tag }}" https://github.com/azahar-emu/azahar azahar
 
+      - name: Validate Koji emulator patch
+        working-directory: azahar
+        run: |
+          set -euo pipefail
+          patch --dry-run --batch -p1 < ../azahar-custom.patch
+
       - name: Apply Koji emulator patch
         working-directory: azahar
         run: |
-          patch -p1 --no-backup-if-mismatch < ../azahar-custom.patch
+          set -euo pipefail
+          patch --batch -p1 --no-backup-if-mismatch < ../azahar-custom.patch
           if find . -name '*.rej' | grep -q .; then
             echo "::error::Patch does not apply cleanly to ${{ steps.ver.outputs.tag }}. Choose a compatible tag or update the patch."
             find . -name '*.rej'
