@@ -520,8 +520,8 @@ diff -ruN a/src/android/app/src/main/res/drawable/home_menu_background.xml b/src
 +<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
 +    <gradient
 +        android:angle="270"
-+        android:startColor="#F4F4F4"
-+        android:endColor="#D9D9DC"
++        android:startColor="#0B0D12"
++        android:endColor="#171B24"
 +        android:type="linear" />
 +</shape>
 diff -ruN a/src/android/app/src/main/res/drawable/home_tile_icon_frame.xml b/src/android/app/src/main/res/drawable/home_tile_icon_frame.xml
@@ -530,9 +530,9 @@ diff -ruN a/src/android/app/src/main/res/drawable/home_tile_icon_frame.xml b/src
 @@ -0,0 +1,6 @@
 +<?xml version="1.0" encoding="utf-8"?>
 +<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-+    <solid android:color="#FFFFFF" />
-+    <corners android:radius="10dp" />
-+    <stroke android:width="2dp" android:color="#FFFFFF" />
++    <solid android:color="#11151D" />
++    <corners android:radius="14dp" />
++    <stroke android:width="1dp" android:color="#343B49" />
 +</shape>
 diff -ruN a/src/android/app/src/main/res/layout/card_game.xml b/src/android/app/src/main/res/layout/card_game.xml
 --- a/src/android/app/src/main/res/layout/card_game.xml	2026-10-11 20:10:47.948722346 +0000
