@@ -43,8 +43,8 @@ jobs:
       GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g\ -XX:MaxMetaspaceSize=1g\ -Dfile.encoding=UTF-8
       # Release signing material lives outside the repository: the provisioned key is cached as
       # .signing (ignored by git) and the private env file in a temporary runner directory.
+      # KOJII_SIGNING_ENV is set per step: the runner context is not available in job-level env.
       KOJII_SIGNING_DIR: ${{ github.workspace }}/.signing
-      KOJII_SIGNING_ENV: ${{ runner.temp }}/signing.env
 
     steps:
       - name: Checkout Kojii builder
@@ -79,6 +79,7 @@ jobs:
       - name: Select APK signing identity
         id: signing
         env:
+          KOJII_SIGNING_ENV: ${{ runner.temp }}/signing.env
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -88,6 +89,8 @@ jobs:
       - name: Provision signing identity
         if: steps.signing.outputs.mode == 'generate'
         run: bash tools/generate_signing_key.sh
+        env:
+          KOJII_SIGNING_ENV: ${{ runner.temp }}/signing.env
 
       # Persist the new identity before the long native build: a later run restores it and signs
       # with exactly the same key. continue-on-error keeps a cache hiccup from discarding a
@@ -207,6 +210,7 @@ jobs:
         working-directory: azahar
         env:
           NDK_CCACHE: /usr/bin/ccache
+          KOJII_SIGNING_ENV: ${{ runner.temp }}/signing.env
         run: |
           set -euo pipefail
           set -a
@@ -295,7 +299,9 @@ jobs:
 
       - name: Remove temporary signing material
         if: always()
-        run: rm -f "$RUNNER_TEMP/kojii-release.p12" "$RUNNER_TEMP/signing.env"
+        env:
+          KOJII_SIGNING_ENV: ${{ runner.temp }}/signing.env
+        run: rm -f "$RUNNER_TEMP/kojii-release.p12" "$KOJII_SIGNING_ENV"
 
       - name: Upload APK
         if: success()

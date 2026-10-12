@@ -73,6 +73,16 @@ class BuildWorkflowTest(unittest.TestCase):
                 script = re.sub(r'\$\{\{.*?\}\}', 'TEST', step['run'])
                 subprocess.run(['bash', '-n'], input=script, text=True, check=True)
 
+    def test_job_level_environment_avoids_the_unavailable_runner_context(self):
+        # ${{ runner.* }} in jobs.<job_id>.env invalidates the whole workflow ("Unrecognized
+        # named-value: runner"), and an invalid workflow runs zero jobs, so the signing env path
+        # is set on each step that consumes it instead.
+        self.assertNotIn('runner.', json.dumps(self.workflow['jobs']['build']['env']))
+        for name in ('Select APK signing identity', 'Provision signing identity', 'Build APK',
+                     'Remove temporary signing material'):
+            self.assertEqual(self.step(name)['env']['KOJII_SIGNING_ENV'],
+                             '${{ runner.temp }}/signing.env')
+
     def test_provisioning_artifact_can_be_promoted_to_secrets(self):
         upload = self.step('Upload provisioned signing identity')
         paths = upload['with']['path'].split()
