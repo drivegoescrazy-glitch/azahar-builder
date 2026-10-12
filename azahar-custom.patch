@@ -991,11 +991,7 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
 --- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
 +++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
-@@ -105,4 +105,40 @@
-     fun readCustomGameSettings(
-         gameId: String,
-         view: SettingsActivityView?
-     ): HashMap<String, SettingSection?> = readFile(getCustomGameSettingsFile(gameId), true, view)
+@@ -108,0 +109,43 @@
 +
 +    /**
 +     * Save only values that differ from the global configuration. This means a per-game setting
