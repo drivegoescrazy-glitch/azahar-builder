@@ -367,8 +367,8 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
          if (menuTag == null) {
 diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/PerGameSettings.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/PerGameSettings.kt
 --- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/PerGameSettings.kt	1970-01-01 00:00:00.000000000 +0000
-+++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/PerGameSettings.kt	2026-10-12 03:36:21.828795587 +0000
-@@ -0,0 +1,188 @@
++++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/PerGameSettings.kt	2026-10-12 04:01:36.537490190 +0000
+@@ -0,0 +1,193 @@
 +// Licensed under GPLv2 or any later version
 +// Refer to the license.txt file included.
 +
@@ -436,9 +436,14 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 +    private fun customFile(titleId: Long): DocumentFile? =
 +        configDir()?.findFile(DIR)?.findFile(fileName(titleId))
 +
++    /**
++     * Writes or clears a single key. ini4j's two-argument Map remove cannot be called from Kotlin
++     * (its value type parameter only appears in the return type), so removal goes through the
++     * section instead.
++     */
 +    private fun put(ini: Wini, section: String, key: String, value: Any?) {
 +        if (value == null) {
-+            ini.remove(section, key)
++            ini.get(section)?.remove(key)
 +        } else {
 +            ini.put(section, key, value.toString())
 +        }
@@ -517,7 +522,7 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 +                ini.put("Renderer", "use_skip_duplicate_frames", 1)
 +                ini.put("Core", "use_cpu_jit", 1)
 +            } else {
-+                BOOST_KEYS.forEach { (section, key) -> ini.remove(section, key) }
++                BOOST_KEYS.forEach { (section, key) -> ini.get(section)?.remove(key) }
 +            }
 +
 +            val out = CitraApplication.appContext.contentResolver.openOutputStream(file.uri, "wt")
