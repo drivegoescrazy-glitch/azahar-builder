@@ -991,7 +991,7 @@ diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/
 diff -ruN a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
 --- a/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
 +++ b/src/android/app/src/main/java/org/citra/citra_emu/features/settings/utils/SettingsFile.kt
-@@ -108,0 +109,43 @@
+@@ -108,0 +109,36 @@
 +
 +    /**
 +     * Save only values that differ from the global configuration. This means a per-game setting
