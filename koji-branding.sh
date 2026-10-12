@@ -66,10 +66,35 @@ fragment.write_text(s)
 # Give each horizontal carousel card a stable width. Keep the upstream 8dp spacing.
 layout = root / "res/layout/card_game.xml"
 s = layout.read_text()
-s = s.replace(
-    'android:layout_width="match_parent"\n    android:layout_height="wrap_content"\n    android:layout_margin="8dp"',
-    'android:layout_width="220dp"\n    android:layout_height="wrap_content"\n    android:layout_margin="8dp"',
-    1
+# The root card width must be fixed for a horizontal RecyclerView; match_parent makes each
+# carousel item stretch across the screen and produces the oversized, awkward cards.
+s, count = re.subn(
+    r'(<com\\.google\\.android\\.material\\.card\\.MaterialCardView[^>]*?android:layout_width=")match_parent(")',
+    r'\\g<1>190dp\\g<2>',
+    s,
+    count=1,
+    flags=re.DOTALL,
 )
+if count != 1:
+    raise SystemExit("Could not locate root game-card width; refusing to produce a broken carousel.")
+s = s.replace('android:layout_margin="6dp"', 'android:layout_margin="8dp"', 1)
 layout.write_text(s)
+
+# Keep search results in the same horizontal carousel style as the main library.
+search_fragment = root / "java/org/citra/citra_emu/fragments/SearchFragment.kt"
+s = search_fragment.read_text()
+s = s.replace("import androidx.recyclerview.widget.GridLayoutManager", "import androidx.recyclerview.widget.LinearLayoutManager")
+pattern = re.compile(
+    r"layoutManager = GridLayoutManager\\(\\s*requireContext\\(\\),\\s*resources\\.getInteger\\(R\\.integer\\.game_grid_columns\\)\\s*\\)",
+    re.MULTILINE,
+)
+replacement = """layoutManager = LinearLayoutManager(
+                requireContext(),
+                androidx.recyclerview.widget.RecyclerView.HORIZONTAL,
+                false
+            )"""
+s, count = pattern.subn(replacement, s, count=1)
+if count != 1:
+    raise SystemExit("Could not safely locate search results layout.")
+search_fragment.write_text(s)
 PY
